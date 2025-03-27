@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase/firebaseConfig';
 import AuthForm from '../components/AuthForm';
 import Toast from 'react-native-toast-message';
+import { Ionicons } from '@expo/vector-icons'; // For the back arrow icon
 
 const LoginScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
@@ -41,6 +42,7 @@ const LoginScreen = ({ navigation }) => {
           throw new Error("Invalid role");
       }
     } catch (error) {
+      console.log('Login Error:', error.code || error.name, error.message);
       Toast.show({
         type: 'error',
         text1: 'Error',
@@ -52,43 +54,80 @@ const LoginScreen = ({ navigation }) => {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Welcome Back</Text>
-      <Text style={styles.subtitle}>Sign in to continue</Text>
-      <AuthForm onSubmit={handleLogin} isRegister={false} />
-      <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-        <Text style={styles.link}>Don't have an account? Register</Text>
-      </TouchableOpacity>
-    </View>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={styles.container}
+    >
+      <ScrollView contentContainerStyle={styles.scrollContainer}>
+        {/* Header with Back Arrow */}
+        <View style={styles.header}>
+          <Text style={styles.title}>Sign In.</Text>
+        </View>
+
+        {/* Form Section */}
+        <View style={styles.formContainer}>
+          <AuthForm onSubmit={handleLogin} isRegister={false} loading={loading} />
+        </View>
+
+        {/* Forgot Password Link */}
+        <TouchableOpacity onPress={() => {}}>
+          <Text style={styles.forgotPassword}>Forgot Password?</Text>
+        </TouchableOpacity>
+
+        {/* Create Account Link */}
+        <TouchableOpacity style={styles.createAccountButton} onPress={() => navigation.navigate('Register')}>
+          <Text style={styles.createAccountText}>
+            Don’t have an account? <Text style={styles.createAccountTextBold}>Create account</Text>
+          </Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#1C2526', // Dark background as in the image
+  },
+  scrollContainer: {
+    flexGrow: 1,
     padding: 20,
+    justifyContent: 'center',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 30,
   },
   title: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 10,
-    textAlign: 'center',
+    color: '#FFFFFF', // White text
+    marginLeft: 10,
   },
-  subtitle: {
-    fontSize: 18,
-    color: '#666',
-    marginBottom: 30,
-    textAlign: 'center',
+  formContainer: {
+    marginBottom: 20,
   },
-  link: {
-    color: '#007AFF',
-    textAlign: 'center',
-    fontSize: 16,
+  forgotPassword: {
+    fontSize: 14,
+    color: '#FFFFFF', // White text
+    textAlign: 'right',
+    marginBottom: 20,
+  },
+  createAccountButton: {
+    alignItems: 'center',
     marginTop: 20,
-  }
+  },
+  createAccountText: {
+    fontSize: 16,
+    color: '#FFFFFF', // White text
+  },
+  createAccountTextBold: {
+    fontWeight: 'bold',
+    color: '#FFFFFF', // White text with bold
+    textDecorationLine: 'underline',
+  },
 });
 
 export default LoginScreen;

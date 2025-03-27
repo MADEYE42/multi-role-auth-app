@@ -8,6 +8,7 @@ import HospitalDashboard from '../screens/HospitalDashboard';
 import MechanicDashboard from '../screens/MechanicDashboard';
 import MedicalEmergencyScreen from '../screens/MedicalEmergencyScreen';
 import VehicleBreakdownScreen from '../screens/VehicleBreakdownScreen';
+import AddMedicalInfoScreen from '../screens/AddMedicalInfoScreen';
 
 const Stack = createStackNavigator();
 
@@ -27,6 +28,7 @@ const AppNavigator = () => {
         <Stack.Screen name="MechanicDashboard" component={MechanicDashboard} />
         <Stack.Screen name="MedicalEmergency" component={MedicalEmergencyScreen} />
         <Stack.Screen name="VehicleBreakdown" component={VehicleBreakdownScreen} />
+        <Stack.Screen name="AddMedicalInfo" component={AddMedicalInfoScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
