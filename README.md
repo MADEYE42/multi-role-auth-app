@@ -151,7 +151,7 @@ multi-role-auth-app/
 ---
 ## 📞 Contact
 
-📧 Email: your-email@example.com  
+📧 Email: gmadye13@example.com  
 🌐 GitHub: [your-username](https://github.com/MADEYE42)
 ---
 
