@@ -152,7 +152,7 @@ multi-role-auth-app/
 ## 📞 Contact
 
 📧 Email: gmadye13@example.com  
-🌐 GitHub: [your-username](https://github.com/MADEYE42)
+🌐 GitHub: [MADEYE42](https://github.com/MADEYE42)
 ---
 
 ## 🌟 Acknowledgments
