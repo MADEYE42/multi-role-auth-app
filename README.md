@@ -168,12 +168,6 @@ Happy coding! 🎉 Let’s make emergency response faster and smarter! 🚀
 
 ---
 
-### Notes for You
-
-- **Screenshots Section**: The `Screenshots` section is a placeholder. You can add actual screenshots of your app (e.g., `LoginScreen`, `RegisterScreen`, `MechanicDashboard`) by capturing them from your emulator/device and placing them in a folder (e.g., `screenshots/`) in your project. Update the paths in the `README.md` accordingly.
-
-- **Contact Section**: Replace `your-email@example.com` and `your-username` with your actual email and GitHub username.
-
 - **Customization**: Feel free to add more emojis, sections (e.g., `Future Features`), or details (e.g., Firebase setup instructions) as needed.
 
 Let me know if you’d like to adjust or add anything to the `README.md`! 🚀
