@@ -5,9 +5,10 @@ import { collection, query, where, onSnapshot, doc, updateDoc, runTransaction, g
 import { signOut } from 'firebase/auth';
 import Toast from 'react-native-toast-message';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const MechanicDashboard = ({ navigation }) => {
-  const [mechanicData, setMechanicData] = useState(null); // Store mechanic data (resources)
+  const [mechanicData, setMechanicData] = useState(null);
   const [pendingEmergencies, setPendingEmergencies] = useState([]);
   const [acceptedEmergencies, setAcceptedEmergencies] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -15,24 +16,21 @@ const MechanicDashboard = ({ navigation }) => {
 
   useEffect(() => {
     if (!auth.currentUser) {
-      console.log('No authenticated user');
       navigation.replace('Login');
       return;
     }
 
-    // Fetch mechanic data (resources)
     const fetchMechanicData = async () => {
       try {
         const mechanicDocRef = doc(db, 'users', auth.currentUser.uid);
         const mechanicDoc = await getDoc(mechanicDocRef);
         if (mechanicDoc.exists()) {
           setMechanicData(mechanicDoc.data());
-          console.log('Mechanic Data:', mechanicDoc.data()); // Debug log
         } else {
           Toast.show({
             type: 'error',
             text1: 'Error',
-            text2: 'Mechanic data not found.'
+            text2: 'Mechanic data not found.',
           });
         }
       } catch (error) {
@@ -40,14 +38,13 @@ const MechanicDashboard = ({ navigation }) => {
         Toast.show({
           type: 'error',
           text1: 'Error',
-          text2: 'Failed to fetch mechanic data.'
+          text2: 'Failed to fetch mechanic data.',
         });
       }
     };
 
     fetchMechanicData();
 
-    // Fetch pending vehicle emergencies
     const pendingQuery = query(
       collection(db, 'VehicleEmergency'),
       where('status', '==', 'pending'),
@@ -59,7 +56,6 @@ const MechanicDashboard = ({ navigation }) => {
         id: docSnapshot.id,
         ...docSnapshot.data(),
       }));
-      console.log('Pending Vehicle Emergencies:', emergencies); // Debug log
       setPendingEmergencies(emergencies);
       setLoading(false);
     }, (error) => {
@@ -67,12 +63,11 @@ const MechanicDashboard = ({ navigation }) => {
       Toast.show({
         type: 'error',
         text1: 'Error',
-        text2: error.message
+        text2: error.message,
       });
       setLoading(false);
     });
 
-    // Fetch accepted emergencies for this mechanic
     const acceptedQuery = query(
       collection(db, 'VehicleEmergency'),
       where('mechanicId', '==', auth.currentUser.uid),
@@ -84,30 +79,27 @@ const MechanicDashboard = ({ navigation }) => {
         id: docSnapshot.id,
         ...docSnapshot.data(),
       }));
-      console.log('Accepted Vehicle Emergencies:', emergencies); // Debug log
       setAcceptedEmergencies(emergencies);
     }, (error) => {
       console.log('Snapshot Error:', error.code, error.message);
       Toast.show({
         type: 'error',
         text1: 'Error',
-        text2: error.message
+        text2: error.message,
       });
     });
 
-    // Listen for changes to mechanic data in real-time
     const mechanicDocRef = doc(db, 'users', auth.currentUser.uid);
     const unsubscribeMechanic = onSnapshot(mechanicDocRef, (docSnapshot) => {
       if (docSnapshot.exists()) {
         setMechanicData(docSnapshot.data());
-        console.log('Updated Mechanic Data:', docSnapshot.data()); // Debug log
       }
     }, (error) => {
       console.log('Mechanic Snapshot Error:', error.code, error.message);
       Toast.show({
         type: 'error',
         text1: 'Error',
-        text2: 'Failed to update mechanic data.'
+        text2: 'Failed to update mechanic data.',
       });
     });
 
@@ -150,21 +142,21 @@ const MechanicDashboard = ({ navigation }) => {
         });
         transaction.update(emergencyRef, {
           mechanicId: mechanicId,
-          status: 'accepted'
+          status: 'accepted',
         });
       });
 
       Toast.show({
         type: 'success',
         text1: 'Success',
-        text2: 'Emergency accepted successfully!'
+        text2: 'Emergency accepted successfully!',
       });
     } catch (error) {
       console.log('Accept Error:', error.code, error.message);
       Toast.show({
         type: 'error',
         text1: 'Error',
-        text2: error.message
+        text2: error.message,
       });
     } finally {
       setProcessing(null);
@@ -176,19 +168,19 @@ const MechanicDashboard = ({ navigation }) => {
     try {
       const emergencyRef = doc(db, 'VehicleEmergency', emergencyId);
       await updateDoc(emergencyRef, {
-        status: 'declined'
+        status: 'declined',
       });
       Toast.show({
         type: 'success',
         text1: 'Success',
-        text2: 'Emergency declined.'
+        text2: 'Emergency declined.',
       });
     } catch (error) {
       console.log('Decline Error:', error.code, error.message);
       Toast.show({
         type: 'error',
         text1: 'Error',
-        text2: error.message
+        text2: error.message,
       });
     } finally {
       setProcessing(null);
@@ -198,34 +190,33 @@ const MechanicDashboard = ({ navigation }) => {
   const handleAddMechanic = async () => {
     try {
       const mechanicDocRef = doc(db, 'users', auth.currentUser.uid);
-      const newMechanics = (mechanicData.availableMechanics || 0) + 1;
+      const newMechanics = (mechanicData?.availableMechanics || 0) + 1;
       await updateDoc(mechanicDocRef, {
         availableMechanics: newMechanics,
         updatedAt: new Date().toISOString(),
       });
-      console.log('Added Mechanic - New Count:', newMechanics); // Debug log
       Toast.show({
         type: 'success',
         text1: 'Success',
-        text2: 'Mechanic added successfully!'
+        text2: 'Mechanic added successfully!',
       });
     } catch (error) {
       console.log('Add Mechanic Error:', error.code, error.message);
       Toast.show({
         type: 'error',
         text1: 'Error',
-        text2: 'Failed to add mechanic.'
+        text2: 'Failed to add mechanic.',
       });
     }
   };
 
   const handleSubtractMechanic = async () => {
-    const currentMechanics = mechanicData.availableMechanics || 0;
+    const currentMechanics = mechanicData?.availableMechanics || 0;
     if (currentMechanics <= 0) {
       Toast.show({
         type: 'error',
         text1: 'Error',
-        text2: 'No mechanics available to subtract.'
+        text2: 'No mechanics available to subtract.',
       });
       return;
     }
@@ -236,18 +227,17 @@ const MechanicDashboard = ({ navigation }) => {
         availableMechanics: newMechanics,
         updatedAt: new Date().toISOString(),
       });
-      console.log('Subtracted Mechanic - New Count:', newMechanics); // Debug log
       Toast.show({
         type: 'success',
         text1: 'Success',
-        text2: 'Mechanic removed successfully!'
+        text2: 'Mechanic removed successfully!',
       });
     } catch (error) {
       console.log('Subtract Mechanic Error:', error.code, error.message);
       Toast.show({
         type: 'error',
         text1: 'Error',
-        text2: 'Failed to remove mechanic.'
+        text2: 'Failed to remove mechanic.',
       });
     }
   };
@@ -255,34 +245,33 @@ const MechanicDashboard = ({ navigation }) => {
   const handleAddTowTruck = async () => {
     try {
       const mechanicDocRef = doc(db, 'users', auth.currentUser.uid);
-      const newTowTrucks = (mechanicData.availableTowTrucks || 0) + 1;
+      const newTowTrucks = (mechanicData?.availableTowTrucks || 0) + 1;
       await updateDoc(mechanicDocRef, {
         availableTowTrucks: newTowTrucks,
         updatedAt: new Date().toISOString(),
       });
-      console.log('Added Tow Truck - New Count:', newTowTrucks); // Debug log
       Toast.show({
         type: 'success',
         text1: 'Success',
-        text2: 'Tow truck added successfully!'
+        text2: 'Tow truck added successfully!',
       });
     } catch (error) {
       console.log('Add Tow Truck Error:', error.code, error.message);
       Toast.show({
         type: 'error',
         text1: 'Error',
-        text2: 'Failed to add tow truck.'
+        text2: 'Failed to add tow truck.',
       });
     }
   };
 
   const handleSubtractTowTruck = async () => {
-    const currentTowTrucks = mechanicData.availableTowTrucks || 0;
+    const currentTowTrucks = mechanicData?.availableTowTrucks || 0;
     if (currentTowTrucks <= 0) {
       Toast.show({
         type: 'error',
         text1: 'Error',
-        text2: 'No tow trucks available to subtract.'
+        text2: 'No tow trucks available to subtract.',
       });
       return;
     }
@@ -293,18 +282,17 @@ const MechanicDashboard = ({ navigation }) => {
         availableTowTrucks: newTowTrucks,
         updatedAt: new Date().toISOString(),
       });
-      console.log('Subtracted Tow Truck - New Count:', newTowTrucks); // Debug log
       Toast.show({
         type: 'success',
         text1: 'Success',
-        text2: 'Tow truck removed successfully!'
+        text2: 'Tow truck removed successfully!',
       });
     } catch (error) {
       console.log('Subtract Tow Truck Error:', error.code, error.message);
       Toast.show({
         type: 'error',
         text1: 'Error',
-        text2: 'Failed to remove tow truck.'
+        text2: 'Failed to remove tow truck.',
       });
     }
   };
@@ -315,7 +303,7 @@ const MechanicDashboard = ({ navigation }) => {
       Toast.show({
         type: 'success',
         text1: 'Success',
-        text2: 'Logged out successfully!'
+        text2: 'Logged out successfully!',
       });
       navigation.replace('Login');
     } catch (error) {
@@ -323,301 +311,353 @@ const MechanicDashboard = ({ navigation }) => {
       Toast.show({
         type: 'error',
         text1: 'Error',
-        text2: error.message
+        text2: error.message,
       });
     }
   };
 
   return (
-    <ScrollView style={styles.container}>
-      {/* Header Section */}
-      <View style={styles.header}>
-        <Text style={styles.title}>Mechanic Dashboard</Text>
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Ionicons name="log-out-outline" size={24} color="#FF3B30" />
-        </TouchableOpacity>
-      </View>
-      <Text style={styles.subtitle}>Welcome, {mechanicData?.name || 'Mechanic'}</Text>
+    <LinearGradient
+      colors={['#FFFFFF', '#E6F0FA']} // White to light blue gradient
+      style={styles.gradientContainer}
+    >
+      <ScrollView style={styles.container} contentContainerStyle={styles.scrollContainer}>
+        {/* Header Section */}
+        <View style={styles.header}>
+          <View style={styles.headerTextContainer}>
+            <Text style={styles.title}>Mechanic Dashboard</Text>
+            <Text style={styles.subtitle}>Manage Vehicle Emergencies</Text>
+          </View>
+          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+            <Ionicons name="log-out" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
 
-      {/* Mechanic Resources Section */}
-      {mechanicData ? (
-        <View style={styles.resourcesContainer}>
-          <Text style={styles.sectionTitle}>Mechanic Resources</Text>
-          <View style={styles.resourceRow}>
-            <Ionicons name="construct-outline" size={20} color="#666" style={styles.icon} />
-            <Text style={styles.resourceText}>Available Mechanics: {mechanicData.availableMechanics || 0}</Text>
-            <View style={styles.resourceButtons}>
-              <TouchableOpacity style={styles.resourceButton} onPress={handleAddMechanic}>
-                <Ionicons name="add-outline" size={20} color="#FFFFFF" />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.resourceButton} onPress={handleSubtractMechanic}>
-                <Ionicons name="remove-outline" size={20} color="#FFFFFF" />
-              </TouchableOpacity>
+        {/* Mechanic Resources Section */}
+        {mechanicData ? (
+          <View style={styles.resourcesContainer}>
+            <Text style={styles.sectionTitle}>Mechanic Resources</Text>
+            <View style={styles.resourceRow}>
+              <Ionicons name="construct" size={22} color="#F4A261" style={styles.icon} />
+              <Text style={styles.resourceText}>Mechanics: {mechanicData.availableMechanics || 0}</Text>
+              <View style={styles.resourceButtons}>
+                <TouchableOpacity style={styles.resourceButtonAdd} onPress={handleAddMechanic}>
+                  <Ionicons name="add" size={20} color="#FFFFFF" />
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.resourceButtonSubtract} onPress={handleSubtractMechanic}>
+                  <Ionicons name="remove" size={20} color="#FFFFFF" />
+                </TouchableOpacity>
+              </View>
+            </View>
+            <View style={styles.resourceRow}>
+              <Ionicons name="car" size={22} color="#F4A261" style={styles.icon} />
+              <Text style={styles.resourceText}>Tow Trucks: {mechanicData.availableTowTrucks || 0}</Text>
+              <View style={styles.resourceButtons}>
+                <TouchableOpacity style={styles.resourceButtonAdd} onPress={handleAddTowTruck}>
+                  <Ionicons name="add" size={20} color="#FFFFFF" />
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.resourceButtonSubtract} onPress={handleSubtractTowTruck}>
+                  <Ionicons name="remove" size={20} color="#FFFFFF" />
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
-          <View style={styles.resourceRow}>
-            <Ionicons name="car-outline" size={20} color="#666" style={styles.icon} />
-            <Text style={styles.resourceText}>Available Tow Trucks: {mechanicData.availableTowTrucks || 0}</Text>
-            <View style={styles.resourceButtons}>
-              <TouchableOpacity style={styles.resourceButton} onPress={handleAddTowTruck}>
-                <Ionicons name="add-outline" size={20} color="#FFFFFF" />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.resourceButton} onPress={handleSubtractTowTruck}>
-                <Ionicons name="remove-outline" size={20} color="#FFFFFF" />
-              </TouchableOpacity>
+        ) : (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#F4A261" />
+            <Text style={styles.loadingText}>Loading resources...</Text>
+          </View>
+        )}
+
+        {/* Loading State for Emergencies */}
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#F4A261" />
+            <Text style={styles.loadingText}>Loading emergencies...</Text>
+          </View>
+        ) : (
+          <>
+            {/* Pending Emergencies Section */}
+            <View style={styles.sectionContainer}>
+              <Text style={styles.sectionTitle}>Pending Vehicle Emergencies</Text>
+              {pendingEmergencies.length === 0 ? (
+                <Text style={styles.noDataText}>No pending emergencies.</Text>
+              ) : (
+                pendingEmergencies.map((emergency) => (
+                  <View key={emergency.id} style={styles.emergencyCard}>
+                    <View style={styles.emergencyRow}>
+                      <Ionicons name="car" size={20} color="#F4A261" style={styles.icon} />
+                      <Text style={styles.emergencyText}>Type: {emergency.type}</Text>
+                    </View>
+                    <View style={styles.emergencyRow}>
+                      <Ionicons name="car-sport" size={20} color="#F4A261" style={styles.icon} />
+                      <Text style={styles.emergencyText}>Vehicle: {emergency.vehicleType}</Text>
+                    </View>
+                    <View style={styles.emergencyRow}>
+                      <Ionicons name="warning" size={20} color="#F4A261" style={styles.icon} />
+                      <Text style={styles.emergencyText} numberOfLines={2} ellipsizeMode="tail">
+                        Issue: {emergency.description}
+                      </Text>
+                    </View>
+                    {emergency.notes && (
+                      <View style={styles.emergencyRow}>
+                        <Ionicons name="document-text" size={20} color="#F4A261" style={styles.icon} />
+                        <Text style={styles.emergencyText} numberOfLines={2} ellipsizeMode="tail">
+                          Notes: {emergency.notes}
+                        </Text>
+                      </View>
+                    )}
+                    <View style={styles.emergencyRow}>
+                      <Ionicons name="location" size={20} color="#F4A261" style={styles.icon} />
+                      <Text style={styles.emergencyText} numberOfLines={2} ellipsizeMode="tail">
+                        Location: {emergency.location}
+                      </Text>
+                    </View>
+                    <View style={styles.emergencyRow}>
+                      <Ionicons name="person" size={20} color="#F4A261" style={styles.icon} />
+                      <Text style={styles.emergencyText}>User: {emergency.userName}</Text>
+                    </View>
+                    <View style={styles.emergencyRow}>
+                      <Ionicons name="time" size={20} color="#F4A261" style={styles.icon} />
+                      <Text style={styles.emergencyText}>
+                        Time: {new Date(emergency.timestamp).toLocaleString()}
+                      </Text>
+                    </View>
+                    <View style={styles.buttonRow}>
+                      <TouchableOpacity
+                        style={[
+                          styles.actionButton,
+                          styles.acceptButton,
+                          (processing === emergency.id || mechanicData?.availableMechanics === 0 || mechanicData?.availableTowTrucks === 0) && styles.disabledButton,
+                        ]}
+                        onPress={() => handleAcceptEmergency(emergency.id)}
+                        disabled={processing === emergency.id || mechanicData?.availableMechanics === 0 || mechanicData?.availableTowTrucks === 0}
+                      >
+                        {processing === emergency.id ? (
+                          <ActivityIndicator size="small" color="#FFFFFF" />
+                        ) : (
+                          <Text style={styles.actionButtonText}>ACCEPT</Text>
+                        )}
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[
+                          styles.actionButton,
+                          styles.declineButton,
+                          processing === emergency.id && styles.disabledButton,
+                        ]}
+                        onPress={() => handleDeclineEmergency(emergency.id)}
+                        disabled={processing === emergency.id}
+                      >
+                        {processing === emergency.id ? (
+                          <ActivityIndicator size="small" color="#FFFFFF" />
+                        ) : (
+                          <Text style={styles.actionButtonText}>DECLINE</Text>
+                        )}
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ))
+              )}
             </View>
-          </View>
-        </View>
-      ) : (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#FF4444" />
-          <Text style={styles.loadingText}>Loading mechanic resources...</Text>
-        </View>
-      )}
 
-      {/* Loading State for Emergencies */}
-      {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#FF4444" />
-          <Text style={styles.loadingText}>Loading emergencies...</Text>
-        </View>
-      ) : (
-        <>
-          {/* Pending Emergencies Section */}
-          <View style={styles.sectionContainer}>
-            <Text style={styles.sectionTitle}>Pending Vehicle Emergencies</Text>
-            {pendingEmergencies.length === 0 ? (
-              <Text style={styles.noDataText}>No pending emergencies available.</Text>
-            ) : (
-              pendingEmergencies.map((emergency) => (
-                <View key={emergency.id} style={styles.emergencyCard}>
-                  <View style={styles.emergencyRow}>
-                    <Ionicons name="car-outline" size={20} color="#666" style={styles.icon} />
-                    <Text style={styles.emergencyText}>Type: {emergency.type}</Text>
-                  </View>
-                  <View style={styles.emergencyRow}>
-                    <Ionicons name="car-sport-outline" size={20} color="#666" style={styles.icon} />
-                    <Text style={styles.emergencyText}>Vehicle Type: {emergency.vehicleType}</Text>
-                  </View>
-                  <View style={styles.emergencyRow}>
-                    <Ionicons name="warning-outline" size={20} color="#666" style={styles.icon} />
-                    <Text style={styles.emergencyText} numberOfLines={2} ellipsizeMode="tail">
-                      Description: {emergency.description}
-                    </Text>
-                  </View>
-                  {emergency.notes && (
+            {/* Accepted Emergencies Section */}
+            <View style={styles.sectionContainer}>
+              <Text style={styles.sectionTitle}>Accepted Vehicle Emergencies</Text>
+              {acceptedEmergencies.length === 0 ? (
+                <Text style={styles.noDataText}>No accepted emergencies.</Text>
+              ) : (
+                acceptedEmergencies.map((emergency) => (
+                  <View key={emergency.id} style={[styles.emergencyCard, { borderLeftColor: '#2A9D8F' }]}>
                     <View style={styles.emergencyRow}>
-                      <Ionicons name="document-text-outline" size={20} color="#666" style={styles.icon} />
+                      <Ionicons name="car" size={20} color="#2A9D8F" style={styles.icon} />
+                      <Text style={styles.emergencyText}>Type: {emergency.type}</Text>
+                    </View>
+                    <View style={styles.emergencyRow}>
+                      <Ionicons name="car-sport" size={20} color="#2A9D8F" style={styles.icon} />
+                      <Text style={styles.emergencyText}>Vehicle: {emergency.vehicleType}</Text>
+                    </View>
+                    <View style={styles.emergencyRow}>
+                      <Ionicons name="warning" size={20} color="#2A9D8F" style={styles.icon} />
                       <Text style={styles.emergencyText} numberOfLines={2} ellipsizeMode="tail">
-                        Notes: {emergency.notes}
+                        Issue: {emergency.description}
                       </Text>
                     </View>
-                  )}
-                  <View style={styles.emergencyRow}>
-                    <Ionicons name="location-outline" size={20} color="#666" style={styles.icon} />
-                    <Text style={styles.emergencyText} numberOfLines={2} ellipsizeMode="tail">
-                      Location: {emergency.location}
-                    </Text>
-                  </View>
-                  <View style={styles.emergencyRow}>
-                    <Ionicons name="person-outline" size={20} color="#666" style={styles.icon} />
-                    <Text style={styles.emergencyText}>User: {emergency.userName}</Text>
-                  </View>
-                  <View style={styles.emergencyRow}>
-                    <Ionicons name="time-outline" size={20} color="#666" style={styles.icon} />
-                    <Text style={styles.emergencyText}>Time: {new Date(emergency.timestamp).toLocaleString()}</Text>
-                  </View>
-                  <View style={styles.buttonRow}>
-                    <TouchableOpacity
-                      style={[styles.actionButton, styles.acceptButton, processing === emergency.id && styles.disabledButton]}
-                      onPress={() => handleAcceptEmergency(emergency.id)}
-                      disabled={processing === emergency.id}
-                    >
-                      {processing === emergency.id ? (
-                        <ActivityIndicator size="small" color="#FFFFFF" />
-                      ) : (
-                        <Text style={styles.actionButtonText}>Accept</Text>
-                      )}
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.actionButton, styles.declineButton, processing === emergency.id && styles.disabledButton]}
-                      onPress={() => handleDeclineEmergency(emergency.id)}
-                      disabled={processing === emergency.id}
-                    >
-                      {processing === emergency.id ? (
-                        <ActivityIndicator size="small" color="#FFFFFF" />
-                      ) : (
-                        <Text style={styles.actionButtonText}>Decline</Text>
-                      )}
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              ))
-            )}
-          </View>
-
-          {/* Accepted Emergencies Section */}
-          <View style={styles.sectionContainer}>
-            <Text style={styles.sectionTitle}>Accepted Vehicle Emergencies</Text>
-            {acceptedEmergencies.length === 0 ? (
-              <Text style={styles.noDataText}>No accepted emergencies.</Text>
-            ) : (
-              acceptedEmergencies.map((emergency) => (
-                <View key={emergency.id} style={styles.emergencyCard}>
-                  <View style={styles.emergencyRow}>
-                    <Ionicons name="car-outline" size={20} color="#666" style={styles.icon} />
-                    <Text style={styles.emergencyText}>Type: {emergency.type}</Text>
-                  </View>
-                  <View style={styles.emergencyRow}>
-                    <Ionicons name="car-sport-outline" size={20} color="#666" style={styles.icon} />
-                    <Text style={styles.emergencyText}>Vehicle Type: {emergency.vehicleType}</Text>
-                  </View>
-                  <View style={styles.emergencyRow}>
-                    <Ionicons name="warning-outline" size={20} color="#666" style={styles.icon} />
-                    <Text style={styles.emergencyText} numberOfLines={2} ellipsizeMode="tail">
-                      Description: {emergency.description}
-                    </Text>
-                  </View>
-                  {emergency.notes && (
+                    {emergency.notes && (
+                      <View style={styles.emergencyRow}>
+                        <Ionicons name="document-text" size={20} color="#2A9D8F" style={styles.icon} />
+                        <Text style={styles.emergencyText} numberOfLines={2} ellipsizeMode="tail">
+                          Notes: {emergency.notes}
+                        </Text>
+                      </View>
+                    )}
                     <View style={styles.emergencyRow}>
-                      <Ionicons name="document-text-outline" size={20} color="#666" style={styles.icon} />
+                      <Ionicons name="location" size={20} color="#2A9D8F" style={styles.icon} />
                       <Text style={styles.emergencyText} numberOfLines={2} ellipsizeMode="tail">
-                        Notes: {emergency.notes}
+                        Location: {emergency.location}
                       </Text>
                     </View>
-                  )}
-                  <View style={styles.emergencyRow}>
-                    <Ionicons name="location-outline" size={20} color="#666" style={styles.icon} />
-                    <Text style={styles.emergencyText} numberOfLines={2} ellipsizeMode="tail">
-                      Location: {emergency.location}
-                    </Text>
+                    <View style={styles.emergencyRow}>
+                      <Ionicons name="person" size={20} color="#2A9D8F" style={styles.icon} />
+                      <Text style={styles.emergencyText}>User: {emergency.userName || 'Unknown'}</Text>
+                    </View>
+                    <View style={styles.emergencyRow}>
+                      <Ionicons name="call" size={20} color="#2A9D8F" style={styles.icon} />
+                      <Text style={styles.emergencyText}>Contact: {emergency.userPhone || 'N/A'}</Text>
+                    </View>
+                    <View style={styles.emergencyRow}>
+                      <Ionicons name="time" size={20} color="#2A9D8F" style={styles.icon} />
+                      <Text style={styles.emergencyText}>
+                        Time: {new Date(emergency.timestamp).toLocaleString()}
+                      </Text>
+                    </View>
                   </View>
-                  <View style={styles.emergencyRow}>
-                    <Ionicons name="person-outline" size={20} color="#666" style={styles.icon} />
-                    <Text style={styles.emergencyText}>User: {emergency.userName || 'Unknown'}</Text>
-                  </View>
-                  <View style={styles.emergencyRow}>
-                    <Ionicons name="call-outline" size={20} color="#666" style={styles.icon} />
-                    <Text style={styles.emergencyText}>Contact: {emergency.userPhone || 'Not available'}</Text>
-                  </View>
-                  <View style={styles.emergencyRow}>
-                    <Ionicons name="time-outline" size={20} color="#666" style={styles.icon} />
-                    <Text style={styles.emergencyText}>Time: {new Date(emergency.timestamp).toLocaleString()}</Text>
-                  </View>
-                </View>
-              ))
-            )}
-          </View>
-        </>
-      )}
-    </ScrollView>
+                ))
+              )}
+            </View>
+          </>
+        )}
+      </ScrollView>
+    </LinearGradient>
   );
 };
 
 const styles = StyleSheet.create({
+  gradientContainer: {
+    flex: 1,
+  },
   container: {
     flex: 1,
-    backgroundColor: '#F5E6CC', // Beige background
-    padding: 20,
+  },
+  scrollContainer: {
+    paddingHorizontal: 20,
+    paddingTop: 40,
+    paddingBottom: 30,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    marginBottom: 25,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  headerTextContainer: {
+    flex: 1,
   },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#000000', // Black text
+    fontSize: 26,
+    fontWeight: '700',
+    color: '#1D3557',
+    letterSpacing: 0.3,
   },
   subtitle: {
-    fontSize: 16,
-    color: '#FFBB33', // Medium yellow
-    marginBottom: 20,
+    fontSize: 14,
+    color: '#457B9D',
+    fontWeight: '500',
+    marginTop: 2,
   },
   logoutButton: {
-    padding: 10,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 10,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#F4A261', // Orange for mechanic theme
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#F4A261',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
   resourcesContainer: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 15,
+    borderRadius: 15,
+    padding: 20,
     marginBottom: 20,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.1,
     shadowRadius: 8,
-    elevation: 5,
+    elevation: 4,
   },
   resourceRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 15,
   },
   resourceText: {
     fontSize: 16,
-    color: '#000000',
+    color: '#1D3557',
     flex: 1,
+    fontWeight: '500',
   },
   resourceButtons: {
     flexDirection: 'row',
   },
-  resourceButton: {
-    backgroundColor: '#FFBB33', // Yellow button
-    padding: 5,
-    borderRadius: 5,
-    marginLeft: 5,
+  resourceButtonAdd: {
+    backgroundColor: '#2A9D8F', // Teal for adding
+    padding: 8,
+    borderRadius: 8,
+    marginLeft: 10,
+  },
+  resourceButtonSubtract: {
+    backgroundColor: '#F4A261', // Orange for subtracting
+    padding: 8,
+    borderRadius: 8,
+    marginLeft: 10,
   },
   loadingContainer: {
-    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 50,
+    marginTop: 80,
   },
   loadingText: {
     marginTop: 10,
     fontSize: 16,
-    color: '#666',
+    color: '#457B9D',
+    fontWeight: '500',
   },
   sectionContainer: {
     marginBottom: 30,
   },
   sectionTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: '#000000',
+    fontWeight: '700',
+    color: '#1D3557',
     marginBottom: 15,
   },
   emergencyCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 15,
+    borderRadius: 15,
+    padding: 18,
     marginBottom: 15,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.1,
     shadowRadius: 8,
-    elevation: 5,
+    elevation: 4,
+    borderLeftWidth: 4,
+    borderLeftColor: '#F4A261', // Orange for pending
   },
   emergencyRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 12,
   },
   icon: {
-    marginRight: 10,
+    marginRight: 12,
   },
   emergencyText: {
     fontSize: 16,
-    color: '#000000',
+    color: '#1D3557',
+    fontWeight: '500',
   },
   buttonRow: {
     flexDirection: 'row',
@@ -626,29 +666,39 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     flex: 1,
-    paddingVertical: 15,
-    borderRadius: 10,
+    paddingVertical: 16,
+    borderRadius: 12,
     alignItems: 'center',
     marginHorizontal: 5,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
   acceptButton: {
-    backgroundColor: '#00CC00', // Green button
+    backgroundColor: '#2A9D8F', // Teal for accept
+    shadowColor: '#2A9D8F',
   },
   declineButton: {
-    backgroundColor: '#FF4444', // Red button
+    backgroundColor: '#F4A261', // Orange for decline
+    shadowColor: '#F4A261',
   },
   disabledButton: {
-    backgroundColor: '#999999', // Gray when disabled
+    backgroundColor: '#A3BFFA', // Light blue when disabled
+    shadowOpacity: 0,
   },
   actionButtonText: {
-    color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '600',
+    color: '#FFFFFF',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
   },
   noDataText: {
     fontSize: 16,
-    color: '#666',
+    color: '#457B9D',
     textAlign: 'center',
+    fontWeight: '500',
   },
 });
 

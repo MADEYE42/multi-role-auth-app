@@ -3,20 +3,20 @@ import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, Activi
 import { auth, db } from '../firebase/firebaseConfig';
 import { doc, updateDoc } from 'firebase/firestore';
 import Toast from 'react-native-toast-message';
-import { Ionicons } from '@expo/vector-icons'; // For icons
-import * as DocumentPicker from 'expo-document-picker'; // For picking files
-import axios from 'axios'; // For Cloudinary upload
+import { Ionicons } from '@expo/vector-icons';
+import * as DocumentPicker from 'expo-document-picker';
+import axios from 'axios';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const AddMedicalInfoScreen = ({ navigation }) => {
-  const [certificate, setCertificate] = useState(null); // Store the selected file
+  const [certificate, setCertificate] = useState(null);
   const [medicalConditions, setMedicalConditions] = useState('');
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  // Pick a certificate (image or PDF)
   const pickCertificate = async () => {
     const result = await DocumentPicker.getDocumentAsync({
-      type: ['image/*', 'application/pdf'], // Allow images and PDFs
+      type: ['image/*', 'application/pdf'],
       copyToCacheDirectory: true,
     });
 
@@ -25,19 +25,17 @@ const AddMedicalInfoScreen = ({ navigation }) => {
         uri: result.uri,
         name: result.name,
       });
-      console.log('Certificate Selected:', result); // Debug log
+      console.log('Certificate Selected:', result);
     } else {
       console.log('Certificate selection cancelled');
     }
   };
 
-  // Upload the certificate to Cloudinary
   const uploadToCloudinary = async (file) => {
     setUploading(true);
     const formData = new FormData();
 
-    // Determine the file type
-    let fileType = 'application/octet-stream'; // Default fallback
+    let fileType = 'application/octet-stream';
     const fileName = file.name || file.uri.split('/').pop();
     const fileExtension = fileName.split('.').pop().toLowerCase();
 
@@ -61,14 +59,14 @@ const AddMedicalInfoScreen = ({ navigation }) => {
           'Content-Type': 'multipart/form-data',
         },
       });
-      console.log('Cloudinary Upload Success:', response.data); // Debug log
-      return response.data.secure_url; // Return the URL of the uploaded file
+      console.log('Cloudinary Upload Success:', response.data);
+      return response.data.secure_url;
     } catch (error) {
       console.log('Cloudinary Upload Error:', error.response?.data || error.message);
       Toast.show({
         type: 'error',
         text1: 'Upload Error',
-        text2: 'Failed to upload certificate. Please try again.'
+        text2: 'Failed to upload certificate.',
       });
       return null;
     } finally {
@@ -76,13 +74,12 @@ const AddMedicalInfoScreen = ({ navigation }) => {
     }
   };
 
-  // Handle form submission
   const handleSubmit = async () => {
     if (!medicalConditions.trim()) {
       Toast.show({
         type: 'error',
         text1: 'Error',
-        text2: 'Please enter your medical conditions.'
+        text2: 'Please enter your medical conditions.',
       });
       return;
     }
@@ -90,9 +87,7 @@ const AddMedicalInfoScreen = ({ navigation }) => {
     setSubmitting(true);
     try {
       const user = auth.currentUser;
-      if (!user) {
-        throw new Error('No authenticated user found.');
-      }
+      if (!user) throw new Error('No authenticated user found.');
 
       let certificateUrl = null;
       if (certificate) {
@@ -101,7 +96,7 @@ const AddMedicalInfoScreen = ({ navigation }) => {
           Toast.show({
             type: 'info',
             text1: 'Upload Skipped',
-            text2: 'Certificate upload failed. Proceeding without certificate.'
+            text2: 'Certificate upload failed. Proceeding without it.',
           });
         }
       }
@@ -112,14 +107,12 @@ const AddMedicalInfoScreen = ({ navigation }) => {
         medicalCertificate: certificateUrl || null,
         updatedAt: new Date().toISOString(),
       };
-      console.log('Updating Firestore with:', updateData); // Debug log
       await updateDoc(userDocRef, updateData);
 
-      console.log('Firestore Update Success'); // Debug log
       Toast.show({
         type: 'success',
         text1: 'Success',
-        text2: 'Medical information added successfully!'
+        text2: 'Medical information added successfully!',
       });
       navigation.goBack();
     } catch (error) {
@@ -127,7 +120,7 @@ const AddMedicalInfoScreen = ({ navigation }) => {
       Toast.show({
         type: 'error',
         text1: 'Error',
-        text2: error.message || 'Failed to add medical information.'
+        text2: error.message || 'Failed to add medical information.',
       });
     } finally {
       setSubmitting(false);
@@ -139,152 +132,199 @@ const AddMedicalInfoScreen = ({ navigation }) => {
   };
 
   return (
-    <ScrollView style={styles.container}>
-      {/* Header Section */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={handleBack}>
-          <Ionicons name="arrow-back-outline" size={28} color="#000000" />
-        </TouchableOpacity>
-        <Text style={styles.title}>Add Medical Information</Text>
-      </View>
-      <Text style={styles.subtitle}>Provide your medical details</Text>
-
-      {/* Input Section */}
-      <View style={styles.inputContainer}>
-        <View style={styles.inputWrapper}>
-          <Ionicons name="medkit-outline" size={20} color="#666" style={styles.icon} />
-          <TextInput
-            style={styles.input}
-            placeholder="Medical Conditions (e.g., Asthma, Diabetes)"
-            value={medicalConditions}
-            onChangeText={setMedicalConditions}
-            placeholderTextColor="#666"
-            multiline
-          />
+    <LinearGradient
+      colors={['#FFFFFF', '#E6F0FA']} // White to light blue gradient
+      style={styles.gradientContainer}
+    >
+      <ScrollView style={styles.container} contentContainerStyle={styles.scrollContainer}>
+        {/* Header Section */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={handleBack} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={28} color="#1D3557" />
+          </TouchableOpacity>
+          <View style={styles.headerTextContainer}>
+            <Text style={styles.title}>Add Medical Info</Text>
+            <Text style={styles.subtitle}>Update Your Medical Details</Text>
+          </View>
         </View>
 
-        <TouchableOpacity
-          style={[styles.uploadButton, uploading && styles.disabledButton]}
-          onPress={pickCertificate}
-          disabled={uploading}
-        >
-          {uploading ? (
-            <ActivityIndicator size="small" color="#FFFFFF" />
-          ) : (
-            <Text style={styles.uploadButtonText}>
-              {certificate ? 'Certificate Selected' : 'Upload Certificate (Image/PDF)'}
+        {/* Input Section */}
+        <View style={styles.inputContainer}>
+          <View style={styles.inputWrapper}>
+            <Ionicons name="medkit" size={22} color="#E63946" style={styles.icon} />
+            <TextInput
+              style={[styles.input, styles.multilineInput]}
+              placeholder="Medical Conditions (e.g., Asthma)"
+              value={medicalConditions}
+              onChangeText={setMedicalConditions}
+              placeholderTextColor="#457B9D"
+              multiline
+            />
+          </View>
+
+          <TouchableOpacity
+            style={[styles.uploadButton, uploading && styles.disabledButton]}
+            onPress={pickCertificate}
+            disabled={uploading}
+          >
+            {uploading ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Text style={styles.uploadButtonText}>
+                {certificate ? 'Certificate Selected' : 'UPLOAD CERTIFICATE'}
+              </Text>
+            )}
+          </TouchableOpacity>
+
+          {certificate && (
+            <Text style={styles.fileName} numberOfLines={1} ellipsizeMode="tail">
+              File: {certificate.name}
             </Text>
           )}
-        </TouchableOpacity>
 
-        {certificate && (
-          <Text style={styles.fileName} numberOfLines={1} ellipsizeMode="tail">
-            Selected File: {certificate.name}
-          </Text>
-        )}
-
-        <TouchableOpacity
-          style={[styles.submitButton, submitting && styles.disabledButton]}
-          onPress={handleSubmit}
-          disabled={submitting || uploading}
-        >
-          {submitting ? (
-            <ActivityIndicator size="small" color="#FFFFFF" />
-          ) : (
-            <Text style={styles.submitButtonText}>Submit</Text>
-          )}
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+          <TouchableOpacity
+            style={[styles.submitButton, (submitting || uploading) && styles.disabledButton]}
+            onPress={handleSubmit}
+            disabled={submitting || uploading}
+          >
+            {submitting ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Text style={styles.submitButtonText}>SUBMIT</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </LinearGradient>
   );
 };
 
 const styles = StyleSheet.create({
+  gradientContainer: {
+    flex: 1,
+  },
   container: {
     flex: 1,
-    backgroundColor: '#F5E6CC', // Beige background
-    padding: 20,
+  },
+  scrollContainer: {
+    paddingHorizontal: 20,
+    paddingTop: 40,
+    paddingBottom: 30,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 10,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    marginBottom: 25,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  backButton: {
+    marginRight: 15,
+  },
+  headerTextContainer: {
+    flex: 1,
   },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#000000', // Black text
-    marginLeft: 10,
+    fontSize: 26,
+    fontWeight: '700',
+    color: '#1D3557',
+    letterSpacing: 0.3,
   },
   subtitle: {
-    fontSize: 16,
-    color: '#FFBB33', // Medium yellow
-    marginBottom: 20,
+    fontSize: 14,
+    color: '#457B9D',
+    fontWeight: '500',
+    marginTop: 2,
   },
   inputContainer: {
-    backgroundColor: '#FFFFFF', // White card background
-    borderRadius: 12,
-    padding: 15,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 15,
+    padding: 20,
     marginBottom: 20,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.1,
     shadowRadius: 8,
-    elevation: 5,
+    elevation: 4,
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F5F5F5',
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    marginBottom: 15,
+    backgroundColor: '#F8F9FA',
+    borderRadius: 12,
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
   },
   input: {
     flex: 1,
     fontSize: 16,
-    color: '#000000',
-    paddingVertical: 10,
-    minHeight: 100, // Allow multiline input
+    color: '#1D3557',
+    paddingVertical: 5,
+  },
+  multilineInput: {
+    minHeight: 100,
     textAlignVertical: 'top',
   },
   icon: {
-    marginRight: 10,
+    marginRight: 12,
   },
   uploadButton: {
-    backgroundColor: '#FFBB33', // Yellow button for upload
-    paddingVertical: 15,
-    borderRadius: 10,
+    backgroundColor: '#2A9D8F',
+    paddingVertical: 16,
+    borderRadius: 12,
     alignItems: 'center',
-    justifyContent: 'center',
+    shadowColor: '#2A9D8F',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
     marginBottom: 15,
   },
   uploadButtonText: {
-    color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '600',
+    color: '#FFFFFF',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
   },
   fileName: {
     fontSize: 14,
-    color: '#666',
-    marginBottom: 15,
+    color: '#457B9D',
+    marginBottom: 20,
     textAlign: 'center',
+    fontWeight: '500',
   },
   submitButton: {
-    backgroundColor: '#00CC00', // Green button for submit
-    paddingVertical: 15,
-    borderRadius: 10,
+    backgroundColor: '#E63946',
+    paddingVertical: 16,
+    borderRadius: 12,
     alignItems: 'center',
-    justifyContent: 'center',
+    shadowColor: '#E63946',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
   disabledButton: {
-    backgroundColor: '#999999', // Gray when disabled
+    backgroundColor: '#A3BFFA',
+    shadowOpacity: 0,
   },
   submitButtonText: {
-    color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '600',
+    color: '#FFFFFF',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
   },
 });
 

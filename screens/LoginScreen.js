@@ -5,7 +5,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase/firebaseConfig';
 import AuthForm from '../components/AuthForm';
 import Toast from 'react-native-toast-message';
-import { Ionicons } from '@expo/vector-icons'; // For the back arrow icon
+import { Ionicons } from '@expo/vector-icons';
 
 const LoginScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
@@ -58,28 +58,42 @@ const LoginScreen = ({ navigation }) => {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
     >
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
-        {/* Header with Back Arrow */}
-        <View style={styles.header}>
-          <Text style={styles.title}>Sign In.</Text>
+      <ScrollView 
+        contentContainerStyle={styles.scrollContainer}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* Centered Content */}
+        <View style={styles.contentContainer}>
+          {/* App Logo/Title */}
+          <View style={styles.logoContainer}>
+            <Ionicons name="medkit" size={48} color="#E63946" />
+            <Text style={styles.appTitle}>RescueLink</Text>
+          </View>
+          
+          {/* Form Section */}
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Sign In</Text>
+            <Text style={styles.cardSubtitle}>Access your emergency network</Text>
+            
+            <View style={styles.formContainer}>
+              <AuthForm onSubmit={handleLogin} isRegister={false} loading={loading} />
+            </View>
+          </View>
+
+          {/* Action Links */}
+          <View style={styles.linksContainer}>
+            <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')}>
+              <Text style={styles.linkText}>Forgot Password?</Text>
+            </TouchableOpacity>
+            
+            <View style={styles.signupPrompt}>
+              <Text style={styles.signupText}>Don't have an account? </Text>
+              <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+                <Text style={[styles.linkText, styles.signupLink]}>Sign Up</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
-
-        {/* Form Section */}
-        <View style={styles.formContainer}>
-          <AuthForm onSubmit={handleLogin} isRegister={false} loading={loading} />
-        </View>
-
-        {/* Forgot Password Link */}
-        <TouchableOpacity onPress={() => {}}>
-          <Text style={styles.forgotPassword}>Forgot Password?</Text>
-        </TouchableOpacity>
-
-        {/* Create Account Link */}
-        <TouchableOpacity style={styles.createAccountButton} onPress={() => navigation.navigate('Register')}>
-          <Text style={styles.createAccountText}>
-            Don’t have an account? <Text style={styles.createAccountTextBold}>Create account</Text>
-          </Text>
-        </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -88,45 +102,72 @@ const LoginScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1C2526', // Dark background as in the image
+    backgroundColor: '#F8F9FA', // Light background for medical clarity
   },
   scrollContainer: {
     flexGrow: 1,
-    padding: 20,
     justifyContent: 'center',
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 30,
+  contentContainer: {
+    padding: 24,
+    maxWidth: 480, // Limits width on larger screens
+    width: '100%',
+    alignSelf: 'center',
   },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#FFFFFF', // White text
-    marginLeft: 10,
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: 40,
+  },
+  appTitle: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#1D3557', // Dark blue
+    marginTop: 12,
+    letterSpacing: 0.5,
+  },
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  cardTitle: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#1D3557',
+    marginBottom: 4,
+  },
+  cardSubtitle: {
+    fontSize: 14,
+    color: '#457B9D',
+    marginBottom: 24,
   },
   formContainer: {
-    marginBottom: 20,
+    marginBottom: 16,
   },
-  forgotPassword: {
-    fontSize: 14,
-    color: '#FFFFFF', // White text
-    textAlign: 'right',
-    marginBottom: 20,
-  },
-  createAccountButton: {
+  linksContainer: {
+    marginTop: 24,
     alignItems: 'center',
-    marginTop: 20,
   },
-  createAccountText: {
-    fontSize: 16,
-    color: '#FFFFFF', // White text
+  linkText: {
+    color: '#E63946', // Emergency red
+    fontSize: 14,
+    fontWeight: '500',
   },
-  createAccountTextBold: {
-    fontWeight: 'bold',
-    color: '#FFFFFF', // White text with bold
-    textDecorationLine: 'underline',
+  signupPrompt: {
+    flexDirection: 'row',
+    marginTop: 16,
+  },
+  signupText: {
+    color: '#457B9D',
+    fontSize: 14,
+  },
+  signupLink: {
+    fontWeight: '600',
   },
 });
 

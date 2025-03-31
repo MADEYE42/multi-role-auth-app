@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react'; // Add useEffect
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
-import { Picker } from '@react-native-picker/picker'; // Import Picker from the new package
+import { Picker } from '@react-native-picker/picker';
 import { Ionicons } from '@expo/vector-icons';
-import Toast from 'react-native-toast-message'; // Ensure Toast is imported
+import Toast from 'react-native-toast-message';
 
 const AuthForm = ({ onSubmit, isRegister, loading, initialAddress }) => {
   const [email, setEmail] = useState('');
@@ -18,12 +18,17 @@ const AuthForm = ({ onSubmit, isRegister, loading, initialAddress }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  // Sync address state with initialAddress when it changes
+  useEffect(() => {
+    setAddress(initialAddress || '');
+  }, [initialAddress]);
+
   const handleSubmit = () => {
     if (isRegister && password !== confirmPassword) {
       Toast.show({
         type: 'error',
         text1: 'Error',
-        text2: 'Passwords do not match.'
+        text2: 'Passwords do not match.',
       });
       return;
     }
@@ -32,7 +37,7 @@ const AuthForm = ({ onSubmit, isRegister, loading, initialAddress }) => {
       Toast.show({
         type: 'error',
         text1: 'Error',
-        text2: 'Please agree to the terms and conditions.'
+        text2: 'Please agree to the terms and conditions.',
       });
       return;
     }
@@ -52,59 +57,63 @@ const AuthForm = ({ onSubmit, isRegister, loading, initialAddress }) => {
   return (
     <View style={styles.container}>
       {isRegister && (
-        <>
-          <View style={styles.inputWrapper}>
-            <TextInput
-              style={styles.input}
-              placeholder="Full Name"
-              value={name}
-              onChangeText={setName}
-              placeholderTextColor="#999999"
-            />
-          </View>
-        </>
+        <View style={styles.inputContainer}>
+          <Ionicons name="person-outline" size={20} color="#457B9D" style={styles.inputIcon} />
+          <TextInput
+            style={styles.input}
+            placeholder="Full Name"
+            placeholderTextColor="#8A8A8A"
+            value={name}
+            onChangeText={setName}
+          />
+        </View>
       )}
 
-      <View style={styles.inputWrapper}>
+      <View style={styles.inputContainer}>
+        <Ionicons name="mail-outline" size={20} color="#457B9D" style={styles.inputIcon} />
         <TextInput
           style={styles.input}
           placeholder="Email"
+          placeholderTextColor="#8A8A8A"
           value={email}
           onChangeText={setEmail}
           keyboardType="email-address"
           autoCapitalize="none"
-          placeholderTextColor="#999999"
         />
       </View>
 
       {isRegister && (
         <>
-          <View style={styles.inputWrapper}>
+          <View style={styles.inputContainer}>
+            <Ionicons name="call-outline" size={20} color="#457B9D" style={styles.inputIcon} />
             <TextInput
               style={styles.input}
               placeholder="Phone Number"
+              placeholderTextColor="#8A8A8A"
               value={phone}
               onChangeText={setPhone}
               keyboardType="phone-pad"
-              placeholderTextColor="#999999"
             />
           </View>
 
-          <View style={styles.inputWrapper}>
+          <View style={styles.inputContainer}>
+            <Ionicons name="location-outline" size={20} color="#457B9D" style={styles.inputIcon} />
             <TextInput
               style={styles.input}
               placeholder="Address"
+              placeholderTextColor="#8A8A8A"
               value={address}
               onChangeText={setAddress}
-              placeholderTextColor="#999999"
             />
           </View>
 
-          <View style={styles.inputWrapper}>
+          <View style={[styles.inputContainer, styles.pickerContainer]}>
+            <Ionicons name="people-outline" size={20} color="#457B9D" style={styles.inputIcon} />
             <Picker
               selectedValue={role}
               style={styles.picker}
               onValueChange={(itemValue) => setRole(itemValue)}
+              dropdownIconColor="#457B9D"
             >
               <Picker.Item label="User" value="user" />
               <Picker.Item label="Hospital" value="hospital" />
@@ -113,71 +122,75 @@ const AuthForm = ({ onSubmit, isRegister, loading, initialAddress }) => {
           </View>
 
           {(role === 'user' || role === 'mechanic') && (
-            <View style={styles.inputWrapper}>
+            <View style={styles.inputContainer}>
+              <Ionicons name="card-outline" size={20} color="#457B9D" style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
                 placeholder="Aadhaar Number"
+                placeholderTextColor="#8A8A8A"
                 value={aadhaar}
                 onChangeText={setAadhaar}
                 keyboardType="numeric"
-                placeholderTextColor="#999999"
               />
             </View>
           )}
 
           {role === 'hospital' && (
-            <View style={styles.inputWrapper}>
+            <View style={styles.inputContainer}>
+              <Ionicons name="document-outline" size={20} color="#457B9D" style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
                 placeholder="License Number"
+                placeholderTextColor="#8A8A8A"
                 value={license}
                 onChangeText={setLicense}
-                placeholderTextColor="#999999"
               />
             </View>
           )}
         </>
       )}
 
-      <View style={styles.inputWrapper}>
+      <View style={styles.inputContainer}>
+        <Ionicons name="lock-closed-outline" size={20} color="#457B9D" style={styles.inputIcon} />
         <TextInput
           style={styles.input}
           placeholder="Password"
+          placeholderTextColor="#8A8A8A"
           value={password}
           onChangeText={setPassword}
           secureTextEntry={!showPassword}
-          placeholderTextColor="#999999"
         />
         <TouchableOpacity
-          style={styles.eyeIcon}
           onPress={() => setShowPassword(!showPassword)}
+          style={styles.eyeIcon}
         >
           <Ionicons
             name={showPassword ? 'eye-off-outline' : 'eye-outline'}
             size={20}
-            color="#999999"
+            color="#457B9D"
           />
         </TouchableOpacity>
       </View>
 
       {isRegister && (
-        <View style={styles.inputWrapper}>
+        <View style={styles.inputContainer}>
+          <Ionicons name="lock-closed-outline" size={20} color="#457B9D" style={styles.inputIcon} />
           <TextInput
             style={styles.input}
             placeholder="Confirm Password"
+            placeholderTextColor="#8A8A8A"
             value={confirmPassword}
             onChangeText={setConfirmPassword}
             secureTextEntry={!showConfirmPassword}
-            placeholderTextColor="#999999"
           />
           <TouchableOpacity
-            style={styles.eyeIcon}
             onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+            style={styles.eyeIcon}
           >
             <Ionicons
               name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'}
               size={20}
-              color="#999999"
+              color="#457B9D"
             />
           </TouchableOpacity>
         </View>
@@ -189,13 +202,16 @@ const AuthForm = ({ onSubmit, isRegister, loading, initialAddress }) => {
             style={styles.checkbox}
             onPress={() => setTermsAccepted(!termsAccepted)}
           >
-            {termsAccepted ? (
-              <Ionicons name="checkbox-outline" size={24} color="#FFFFFF" />
-            ) : (
-              <Ionicons name="square-outline" size={24} color="#FFFFFF" />
-            )}
+            <Ionicons
+              name={termsAccepted ? 'checkbox' : 'square-outline'}
+              size={24}
+              color={termsAccepted ? '#E63946' : '#457B9D'}
+            />
           </TouchableOpacity>
-          <Text style={styles.termsText}>Agree to terms and conditions</Text>
+          <Text style={styles.termsText}>I agree to the </Text>
+          <TouchableOpacity>
+            <Text style={styles.termsLink}>Terms and Conditions</Text>
+          </TouchableOpacity>
         </View>
       )}
 
@@ -205,10 +221,10 @@ const AuthForm = ({ onSubmit, isRegister, loading, initialAddress }) => {
         disabled={loading}
       >
         {loading ? (
-          <ActivityIndicator size="small" color="#000000" />
+          <ActivityIndicator size="small" color="#FFFFFF" />
         ) : (
           <Text style={styles.submitButtonText}>
-            {isRegister ? 'SIGN UP' : 'SIGN IN'}
+            {isRegister ? 'CREATE ACCOUNT' : 'SIGN IN'}
           </Text>
         )}
       </TouchableOpacity>
@@ -220,24 +236,32 @@ const styles = StyleSheet.create({
   container: {
     width: '100%',
   },
-  inputWrapper: {
+  inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F5F5F5', // Light gray background for inputs
+    backgroundColor: '#FFFFFF',
     borderRadius: 10,
     marginBottom: 15,
     paddingHorizontal: 15,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  inputIcon: {
+    marginRight: 10,
   },
   input: {
     flex: 1,
     fontSize: 16,
-    color: '#000000',
+    color: '#1D3557',
     paddingVertical: 15,
+  },
+  pickerContainer: {
+    paddingHorizontal: 5,
   },
   picker: {
     flex: 1,
-    color: '#000000',
-    paddingVertical: 15,
+    color: '#1D3557',
+    height: 50,
   },
   eyeIcon: {
     padding: 10,
@@ -246,27 +270,40 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 20,
+    flexWrap: 'wrap',
   },
   checkbox: {
-    marginRight: 10,
+    marginRight: 8,
   },
   termsText: {
     fontSize: 14,
-    color: '#FFFFFF', // White text
+    color: '#457B9D',
+  },
+  termsLink: {
+    fontSize: 14,
+    color: '#E63946',
+    fontWeight: '600',
   },
   submitButton: {
-    backgroundColor: '#E0E0E0', // Light gray button background
-    paddingVertical: 15,
+    backgroundColor: '#E63946',
+    paddingVertical: 16,
     borderRadius: 10,
     alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#E63946',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 3,
   },
   disabledButton: {
-    backgroundColor: '#B0B0B0', // Darker gray when disabled
+    backgroundColor: '#B0B0B0',
+    shadowColor: 'transparent',
   },
   submitButtonText: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#000000', // Black text
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
 });
 

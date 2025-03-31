@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
 import { auth, db } from '../firebase/firebaseConfig';
 import { collection, addDoc, doc, getDoc, onSnapshot, deleteDoc } from 'firebase/firestore';
 import Toast from 'react-native-toast-message';
-import * as Location from 'expo-location'; // For location fetching
-import { Ionicons } from '@expo/vector-icons'; // For icons
-import MapView, { Marker } from 'react-native-maps'; // For displaying maps
+import * as Location from 'expo-location';
+import { Ionicons } from '@expo/vector-icons';
+import MapView, { Marker } from 'react-native-maps';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const VehicleBreakdownScreen = ({ navigation }) => {
   const [emergencyType, setEmergencyType] = useState('');
@@ -13,15 +14,14 @@ const VehicleBreakdownScreen = ({ navigation }) => {
   const [description, setDescription] = useState('');
   const [notes, setNotes] = useState('');
   const [location, setLocation] = useState('');
-  const [coordinates, setCoordinates] = useState(null); // Store latitude and longitude for the map
+  const [coordinates, setCoordinates] = useState(null);
   const [status, setStatus] = useState(null);
   const [acceptedMechanic, setAcceptedMechanic] = useState(null);
   const [loadingLocation, setLoadingLocation] = useState(true);
   const [postingEmergency, setPostingEmergency] = useState(false);
-  const [emergencyId, setEmergencyId] = useState(null); // Track the current emergency ID
-  const [unsubscribe, setUnsubscribe] = useState(null); // Store the onSnapshot unsubscribe function
+  const [emergencyId, setEmergencyId] = useState(null);
+  const [unsubscribe, setUnsubscribe] = useState(null);
 
-  // Fetch user's location on component mount
   useEffect(() => {
     (async () => {
       try {
@@ -30,7 +30,7 @@ const VehicleBreakdownScreen = ({ navigation }) => {
           Toast.show({
             type: 'error',
             text1: 'Permission Denied',
-            text2: 'Location permission is required to report an emergency.'
+            text2: 'Location permission is required.',
           });
           setLocation('Location permission denied');
           setLoadingLocation(false);
@@ -59,7 +59,7 @@ const VehicleBreakdownScreen = ({ navigation }) => {
         Toast.show({
           type: 'error',
           text1: 'Error',
-          text2: 'Failed to fetch location.'
+          text2: 'Failed to fetch location.',
         });
         setLocation('Failed to fetch location');
       } finally {
@@ -67,11 +67,8 @@ const VehicleBreakdownScreen = ({ navigation }) => {
       }
     })();
 
-    // Cleanup on unmount
     return () => {
-      if (unsubscribe) {
-        unsubscribe();
-      }
+      if (unsubscribe) unsubscribe();
     };
   }, []);
 
@@ -80,7 +77,7 @@ const VehicleBreakdownScreen = ({ navigation }) => {
       Toast.show({
         type: 'error',
         text1: 'Error',
-        text2: 'Please fill in all required fields (Type, Vehicle Type, Description).'
+        text2: 'Please fill in all required fields.',
       });
       return;
     }
@@ -88,14 +85,11 @@ const VehicleBreakdownScreen = ({ navigation }) => {
     setPostingEmergency(true);
     try {
       const user = auth.currentUser;
-      if (!user) {
-        throw new Error('No authenticated user found.');
-      }
+      if (!user) throw new Error('No authenticated user found.');
 
       const userDocRef = doc(db, 'users', user.uid);
       const userDoc = await getDoc(userDocRef);
       const userData = userDoc.exists() ? userDoc.data() : { name: 'Unknown User', phone: 'Not available' };
-      console.log('User Data:', userData); // Debug log
 
       const emergencyData = {
         userId: user.uid,
@@ -112,20 +106,16 @@ const VehicleBreakdownScreen = ({ navigation }) => {
         status: 'pending',
         mechanicId: null,
       };
-      console.log('Posting Vehicle Emergency with Data:', emergencyData); // Debug log
 
       const emergencyDoc = await addDoc(collection(db, 'VehicleEmergency'), emergencyData);
-
-      console.log('Vehicle Emergency Posted with ID:', emergencyDoc.id); // Debug log
       setEmergencyId(emergencyDoc.id);
       setStatus('pending');
       Toast.show({
         type: 'success',
         text1: 'Emergency Posted',
-        text2: 'Your vehicle emergency has been submitted'
+        text2: 'Your vehicle breakdown has been submitted.',
       });
 
-      // Listen for status updates in real-time using onSnapshot
       const emergencyDocRef = doc(db, 'VehicleEmergency', emergencyDoc.id);
       const unsubscribeSnapshot = onSnapshot(emergencyDocRef, (docSnapshot) => {
         if (docSnapshot.exists()) {
@@ -141,7 +131,7 @@ const VehicleBreakdownScreen = ({ navigation }) => {
                 Toast.show({
                   type: 'error',
                   text1: 'Error',
-                  text2: 'Failed to fetch mechanic details.'
+                  text2: 'Failed to fetch mechanic details.',
                 });
               });
             unsubscribeSnapshot();
@@ -155,7 +145,7 @@ const VehicleBreakdownScreen = ({ navigation }) => {
         Toast.show({
           type: 'error',
           text1: 'Error',
-          text2: error.message
+          text2: error.message,
         });
       });
 
@@ -165,7 +155,7 @@ const VehicleBreakdownScreen = ({ navigation }) => {
       Toast.show({
         type: 'error',
         text1: 'Error',
-        text2: error.message || 'Failed to post emergency.'
+        text2: error.message || 'Failed to post emergency.',
       });
     } finally {
       setPostingEmergency(false);
@@ -191,384 +181,423 @@ const VehicleBreakdownScreen = ({ navigation }) => {
       Toast.show({
         type: 'success',
         text1: 'Emergency Cancelled',
-        text2: 'Your vehicle emergency has been cancelled.'
+        text2: 'Your vehicle emergency has been cancelled.',
       });
     } catch (error) {
       console.log('Cancel Emergency Error:', error.code, error.message);
       Toast.show({
         type: 'error',
         text1: 'Error',
-        text2: 'Failed to cancel the emergency.'
+        text2: 'Failed to cancel the emergency.',
       });
     }
   };
 
   const handleBack = () => {
-    if (unsubscribe) {
-      unsubscribe();
-    }
+    if (unsubscribe) unsubscribe();
     navigation.navigate('UserDashboard');
   };
 
   return (
-    <ScrollView style={styles.container}>
-      {/* Header Section */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={handleBack}>
-          <Ionicons name="arrow-back-outline" size={28} color="#000000" />
-        </TouchableOpacity>
-        <Text style={styles.title}>Vehicle Emergency</Text>
-      </View>
-      <Text style={styles.subtitle}>Report your vehicle breakdown</Text>
-
-      {/* Input Section */}
-      <View style={styles.inputContainer}>
-        <View style={styles.inputWrapper}>
-          <Ionicons name="car-outline" size={20} color="#666" style={styles.icon} />
-          <TextInput
-            style={styles.input}
-            placeholder="Type of Emergency (e.g., Flat Tire)"
-            value={emergencyType}
-            onChangeText={setEmergencyType}
-            placeholderTextColor="#666"
-            editable={!status} // Disable input if an emergency is already posted
-          />
-        </View>
-
-        <View style={styles.inputWrapper}>
-          <Ionicons name="car-sport-outline" size={20} color="#666" style={styles.icon} />
-          <TextInput
-            style={styles.input}
-            placeholder="Vehicle Type (e.g., Sedan, Truck)"
-            value={vehicleType}
-            onChangeText={setVehicleType}
-            placeholderTextColor="#666"
-            editable={!status}
-          />
-        </View>
-
-        <View style={styles.inputWrapper}>
-          <Ionicons name="warning-outline" size={20} color="#666" style={styles.icon} />
-          <TextInput
-            style={styles.input}
-            placeholder="Description of Issue (e.g., Engine Failure)"
-            value={description}
-            onChangeText={setDescription}
-            placeholderTextColor="#666"
-            multiline
-            editable={!status}
-          />
-        </View>
-
-        <View style={styles.inputWrapper}>
-          <Ionicons name="document-text-outline" size={20} color="#666" style={styles.icon} />
-          <TextInput
-            style={styles.input}
-            placeholder="Additional Notes (Optional)"
-            value={notes}
-            onChangeText={setNotes}
-            placeholderTextColor="#666"
-            multiline
-            editable={!status}
-          />
-        </View>
-
-        <View style={styles.inputWrapper}>
-          <Ionicons name="location-outline" size={20} color="#666" style={styles.icon} />
-          {loadingLocation ? (
-            <ActivityIndicator size="small" color="#FF4444" style={styles.input} />
-          ) : (
-            <Text style={styles.locationText} numberOfLines={2} ellipsizeMode="tail">
-              {location}
-            </Text>
-          )}
-        </View>
-
-        {!status ? (
-          <TouchableOpacity
-            style={[styles.submitButton, (postingEmergency || loadingLocation) && styles.disabledButton]}
-            onPress={handlePostEmergency}
-            disabled={postingEmergency || loadingLocation}
-          >
-            {postingEmergency ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
-            ) : (
-              <Text style={styles.submitButtonText}>Post Emergency</Text>
-            )}
+    <LinearGradient
+      colors={['#FFFFFF', '#E6F0FA']} // White to light blue gradient
+      style={styles.gradientContainer}
+    >
+      <ScrollView style={styles.container} contentContainerStyle={styles.scrollContainer}>
+        {/* Header Section */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={handleBack} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={28} color="#1D3557" />
           </TouchableOpacity>
-        ) : status === 'pending' ? (
-          <TouchableOpacity
-            style={[styles.cancelButton]}
-            onPress={handleCancelEmergency}
-          >
-            <Text style={styles.cancelButtonText}>Cancel Emergency</Text>
-          </TouchableOpacity>
-        ) : null}
-      </View>
-
-      {/* Status Section */}
-      {status && !acceptedMechanic && status !== 'accepted' && (
-        <View style={styles.statusContainer}>
-          <Text style={styles.statusTitle}>Emergency Status</Text>
-          <Text style={styles.statusText}>
-            Status: <Text style={styles.statusValue}>{status}</Text>
-          </Text>
-          {status === 'declined' && (
-            <Text style={styles.statusMessage}>Your request was declined. Please try again.</Text>
-          )}
+          <View style={styles.headerTextContainer}>
+            <Text style={styles.title}>Vehicle Breakdown</Text>
+            <Text style={styles.subtitle}>Report a Breakdown</Text>
+          </View>
         </View>
-      )}
 
-      {/* Accepted Mechanic and Map Section */}
-      {acceptedMechanic && (
-        <>
-          {/* Status Update */}
-          <View style={styles.statusContainer}>
-            <Text style={styles.statusTitle}>Emergency Status</Text>
-            <Text style={styles.statusText}>
-              Status: <Text style={[styles.statusValue, styles.acceptedStatus]}>Accepted</Text>
-            </Text>
+        {/* Input Section */}
+        <View style={styles.inputContainer}>
+          <View style={styles.inputWrapper}>
+            <Ionicons name="car" size={22} color="#457B9D" style={styles.icon} />
+            <TextInput
+              style={styles.input}
+              placeholder="Emergency Type (e.g., Flat Tire)"
+              value={emergencyType}
+              onChangeText={setEmergencyType}
+              placeholderTextColor="#457B9D"
+              editable={!status}
+            />
           </View>
 
-          {/* Hardcoded Map Section */}
-          <View style={styles.mapContainer}>
-            <Text style={styles.mapTitle}>Mechanic Route</Text>
-            <MapView
-              style={styles.map}
-              initialRegion={{
-                latitude: 37.78825, // Hardcoded latitude (San Francisco)
-                longitude: -122.4324, // Hardcoded longitude (San Francisco)
-                latitudeDelta: 0.01,
-                longitudeDelta: 0.01,
-              }}
-              scrollEnabled={true}
-              zoomEnabled={true}
+          <View style={styles.inputWrapper}>
+            <Ionicons name="car-sport" size={22} color="#457B9D" style={styles.icon} />
+            <TextInput
+              style={styles.input}
+              placeholder="Vehicle Type (e.g., Sedan)"
+              value={vehicleType}
+              onChangeText={setVehicleType}
+              placeholderTextColor="#457B9D"
+              editable={!status}
+            />
+          </View>
+
+          <View style={styles.inputWrapper}>
+            <Ionicons name="warning" size={22} color="#457B9D" style={styles.icon} />
+            <TextInput
+              style={[styles.input, styles.multilineInput]}
+              placeholder="Description (e.g., Engine Failure)"
+              value={description}
+              onChangeText={setDescription}
+              placeholderTextColor="#457B9D"
+              multiline
+              editable={!status}
+            />
+          </View>
+
+          <View style={styles.inputWrapper}>
+            <Ionicons name="document-text" size={22} color="#457B9D" style={styles.icon} />
+            <TextInput
+              style={[styles.input, styles.multilineInput]}
+              placeholder="Notes (Optional)"
+              value={notes}
+              onChangeText={setNotes}
+              placeholderTextColor="#457B9D"
+              multiline
+              editable={!status}
+            />
+          </View>
+
+          <View style={styles.inputWrapper}>
+            <Ionicons name="location" size={22} color="#457B9D" style={styles.icon} />
+            {loadingLocation ? (
+              <ActivityIndicator size="small" color="#457B9D" style={styles.input} />
+            ) : (
+              <Text style={styles.locationText} numberOfLines={2} ellipsizeMode="tail">
+                {location}
+              </Text>
+            )}
+          </View>
+
+          {!status ? (
+            <TouchableOpacity
+              style={[styles.submitButton, (postingEmergency || loadingLocation) && styles.disabledButton]}
+              onPress={handlePostEmergency}
+              disabled={postingEmergency || loadingLocation}
             >
-              <Marker
-                coordinate={{
-                  latitude: 37.78825,
-                  longitude: -122.4324,
-                }}
-                title="Mechanic Location"
-                description="Mechanic is on the way"
-              />
-              {coordinates && (
-                <Marker
-                  coordinate={{
+              {postingEmergency ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Text style={styles.submitButtonText}>REPORT BREAKDOWN</Text>
+              )}
+            </TouchableOpacity>
+          ) : status === 'pending' ? (
+            <TouchableOpacity style={styles.cancelButton} onPress={handleCancelEmergency}>
+              <Text style={styles.cancelButtonText}>CANCEL BREAKDOWN</Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
+
+        {/* Status Section */}
+        {status && !acceptedMechanic && status !== 'accepted' && (
+          <View style={styles.statusContainer}>
+            <Text style={styles.statusTitle}>Breakdown Status</Text>
+            <Text style={styles.statusText}>
+              Status: <Text style={[styles.statusValue, status === 'pending' ? styles.pendingStatus : styles.declinedStatus]}>{status}</Text>
+            </Text>
+            {status === 'declined' && (
+              <Text style={styles.statusMessage}>Request declined. Please try again.</Text>
+            )}
+          </View>
+        )}
+
+        {/* Accepted Mechanic and Map Section */}
+        {acceptedMechanic && (
+          <>
+            {/* Status Update */}
+            <View style={styles.statusContainer}>
+              <Text style={styles.statusTitle}>Breakdown Status</Text>
+              <Text style={styles.statusText}>
+                Status: <Text style={[styles.statusValue, styles.acceptedStatus]}>Accepted</Text>
+              </Text>
+            </View>
+
+            {/* Map Section */}
+            {coordinates && (
+              <View style={styles.mapContainer}>
+                <Text style={styles.mapTitle}>Mechanic Route</Text>
+                <MapView
+                  style={styles.map}
+                  initialRegion={{
                     latitude: coordinates.latitude,
                     longitude: coordinates.longitude,
+                    latitudeDelta: 0.01,
+                    longitudeDelta: 0.01,
                   }}
-                  title="Your Location"
-                  description="Vehicle Breakdown Location"
-                />
-              )}
-            </MapView>
-            <Text style={styles.mapInfo}>The mechanic will arrive soon!</Text>
-          </View>
+                  scrollEnabled={true}
+                  zoomEnabled={true}
+                >
+                  <Marker
+                    coordinate={{ latitude: coordinates.latitude, longitude: coordinates.longitude }}
+                    title="Your Location"
+                    description="Breakdown Location"
+                    pinColor="#457B9D"
+                  />
+                </MapView>
+                <Text style={styles.mapInfo}>Mechanic dispatched to your location!</Text>
+              </View>
+            )}
 
-          {/* Mechanic Information */}
-          <View style={styles.mechanicContainer}>
-            <Text style={styles.mechanicTitle}>Mechanic Information</Text>
-            <View style={styles.mechanicRow}>
-              <Ionicons name="person-outline" size={20} color="#00CC00" style={styles.mechanicIcon} />
-              <Text style={styles.mechanicText}>Name: {acceptedMechanic.name || 'Not available'}</Text>
+            {/* Mechanic Information */}
+            <View style={styles.mechanicContainer}>
+              <Text style={styles.mechanicTitle}>Mechanic Details</Text>
+              <View style={styles.mechanicRow}>
+                <Ionicons name="person" size={20} color="#F4A261" style={styles.mechanicIcon} />
+                <Text style={styles.mechanicText}>Name: {acceptedMechanic.name || 'N/A'}</Text>
+              </View>
+              <View style={styles.mechanicRow}>
+                <Ionicons name="call" size={20} color="#F4A261" style={styles.mechanicIcon} />
+                <Text style={styles.mechanicText}>Contact: {acceptedMechanic.phone || 'N/A'}</Text>
+              </View>
+              <View style={styles.mechanicRow}>
+                <Ionicons name="construct" size={20} color="#F4A261" style={styles.mechanicIcon} />
+                <Text style={styles.mechanicText}>Mechanics: {acceptedMechanic.availableMechanics || 'N/A'}</Text>
+              </View>
+              <View style={styles.mechanicRow}>
+                <Ionicons name="car" size={20} color="#F4A261" style={styles.mechanicIcon} />
+                <Text style={styles.mechanicText}>Tow Trucks: {acceptedMechanic.availableTowTrucks || 'N/A'}</Text>
+              </View>
             </View>
-            <View style={styles.mechanicRow}>
-              <Ionicons name="call-outline" size={20} color="#00CC00" style={styles.mechanicIcon} />
-              <Text style={styles.mechanicText}>Contact: {acceptedMechanic.phone || 'Not available'}</Text>
-            </View>
-            <View style={styles.mechanicRow}>
-              <Ionicons name="construct-outline" size={20} color="#00CC00" style={styles.mechanicIcon} />
-              <Text style={styles.mechanicText}>Available Mechanics: {acceptedMechanic.availableMechanics || 'Not available'}</Text>
-            </View>
-            <View style={styles.mechanicRow}>
-              <Ionicons name="car-outline" size={20} color="#00CC00" style={styles.mechanicIcon} />
-              <Text style={styles.mechanicText}>Available Tow Trucks: {acceptedMechanic.availableTowTrucks || 'Not available'}</Text>
-            </View>
-          </View>
-        </>
-      )}
-    </ScrollView>
+          </>
+        )}
+      </ScrollView>
+    </LinearGradient>
   );
 };
 
 const styles = StyleSheet.create({
+  gradientContainer: {
+    flex: 1,
+  },
   container: {
     flex: 1,
-    backgroundColor: '#F5E6CC', // Beige background
-    padding: 20,
+  },
+  scrollContainer: {
+    paddingHorizontal: 20,
+    paddingTop: 40,
+    paddingBottom: 30,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 10,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    marginBottom: 25,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  backButton: {
+    marginRight: 15,
+  },
+  headerTextContainer: {
+    flex: 1,
   },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#000000', // Black text
-    marginLeft: 10,
+    fontSize: 26,
+    fontWeight: '700',
+    color: '#1D3557',
+    letterSpacing: 0.3,
   },
   subtitle: {
-    fontSize: 16,
-    color: '#FFBB33', // Medium yellow
-    marginBottom: 20,
+    fontSize: 14,
+    color: '#457B9D',
+    fontWeight: '500',
+    marginTop: 2,
   },
   inputContainer: {
-    backgroundColor: '#FFFFFF', // White card background
-    borderRadius: 12,
-    padding: 15,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 15,
+    padding: 20,
     marginBottom: 20,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.1,
     shadowRadius: 8,
-    elevation: 5,
+    elevation: 4,
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F5F5F5',
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    backgroundColor: '#F8F9FA',
+    borderRadius: 12,
+    paddingHorizontal: 15,
+    paddingVertical: 10,
     marginBottom: 15,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
   },
   input: {
     flex: 1,
     fontSize: 16,
-    color: '#000000',
-    paddingVertical: 10,
-    minHeight: 50, // Allow multiline input
+    color: '#1D3557',
+    paddingVertical: 5,
+  },
+  multilineInput: {
+    minHeight: 60,
     textAlignVertical: 'top',
   },
   locationText: {
     flex: 1,
     fontSize: 16,
-    color: '#000000',
-    paddingVertical: 10,
+    color: '#1D3557',
+    paddingVertical: 5,
   },
   icon: {
-    marginRight: 10,
+    marginRight: 12,
   },
   submitButton: {
-    backgroundColor: '#FF4444', // Red button
-    paddingVertical: 15,
-    borderRadius: 10,
+    backgroundColor: '#457B9D',
+    paddingVertical: 16,
+    borderRadius: 12,
     alignItems: 'center',
-    justifyContent: 'center',
+    shadowColor: '#457B9D',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
   disabledButton: {
-    backgroundColor: '#FF9999', // Lighter red when disabled
+    backgroundColor: '#A3BFFA',
+    shadowOpacity: 0,
   },
   submitButtonText: {
-    color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '600',
+    color: '#FFFFFF',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
   },
   cancelButton: {
-    backgroundColor: '#FFBB33', // Yellow button for cancel
-    paddingVertical: 15,
-    borderRadius: 10,
+    backgroundColor: '#F4A261',
+    paddingVertical: 16,
+    borderRadius: 12,
     alignItems: 'center',
-    justifyContent: 'center',
+    shadowColor: '#F4A261',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
   cancelButtonText: {
-    color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '600',
+    color: '#FFFFFF',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
   },
   statusContainer: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 15,
+    borderRadius: 15,
+    padding: 20,
     marginBottom: 20,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.1,
     shadowRadius: 8,
-    elevation: 5,
+    elevation: 4,
     alignItems: 'center',
   },
   statusTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: '#000000',
+    fontWeight: '700',
+    color: '#1D3557',
     marginBottom: 10,
   },
   statusText: {
     fontSize: 16,
-    color: '#666',
+    color: '#457B9D',
   },
   statusValue: {
-    color: '#FF4444',
-    fontWeight: 'bold',
+    fontWeight: '600',
+  },
+  pendingStatus: {
+    color: '#457B9D',
+  },
+  declinedStatus: {
+    color: '#E63946',
   },
   acceptedStatus: {
-    color: '#00CC00', // Green for accepted status
+    color: '#F4A261',
   },
   statusMessage: {
     fontSize: 14,
-    color: '#FF4444',
-    marginTop: 5,
-  },
-  mapContainer: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 15,
-    marginBottom: 20,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 5,
-    alignItems: 'center',
-  },
-  mapTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#000000',
-    marginBottom: 15,
-  },
-  map: {
-    width: '100%',
-    height: 200,
-    borderRadius: 8,
-  },
-  mapInfo: {
-    fontSize: 14,
-    color: '#666',
+    color: '#E63946',
     marginTop: 10,
     textAlign: 'center',
   },
+  mapContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 15,
+    padding: 20,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  mapTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1D3557',
+    marginBottom: 15,
+    textAlign: 'center',
+  },
+  map: {
+    width: '100%',
+    height: 250,
+    borderRadius: 10,
+  },
+  mapInfo: {
+    fontSize: 14,
+    color: '#457B9D',
+    marginTop: 10,
+    textAlign: 'center',
+    fontWeight: '500',
+  },
   mechanicContainer: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 15,
+    borderRadius: 15,
+    padding: 20,
     marginBottom: 20,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.1,
     shadowRadius: 8,
-    elevation: 5,
+    elevation: 4,
   },
   mechanicTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: '#00CC00',
+    fontWeight: '700',
+    color: '#F4A261',
     marginBottom: 15,
   },
   mechanicRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 12,
   },
   mechanicIcon: {
-    marginRight: 10,
+    marginRight: 12,
   },
   mechanicText: {
     fontSize: 16,
-    color: '#000000',
+    color: '#1D3557',
+    fontWeight: '500',
   },
 });
 

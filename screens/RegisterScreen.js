@@ -1,156 +1,146 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator } from 'react-native';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase/firebaseConfig';
 import AuthForm from '../components/AuthForm';
 import Toast from 'react-native-toast-message';
-import * as Location from 'expo-location'; // For location fetching
-import { Ionicons } from '@expo/vector-icons'; // For the back arrow icon
+import * as Location from 'expo-location';
+import { Ionicons } from '@expo/vector-icons';
 
 const RegisterScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
-  const [location, setLocation] = useState(null);
+  const [locationLoading, setLocationLoading] = useState(true);
   const [address, setAddress] = useState('');
+  const [locationError, setLocationError] = useState(null);
 
-  // Fetch user's location on component mount
+  // Enhanced location fetching with better error handling
   useEffect(() => {
-    (async () => {
+    const fetchLocation = async () => {
       try {
+        setLocationLoading(true);
+        setLocationError(null);
+        
+        // Check permissions
         let { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== 'granted') {
-          Toast.show({
-            type: 'error',
-            text1: 'Permission Denied',
-            text2: 'Location permission is required to fetch your address.'
-          });
+          setLocationError('Location permission is required to fetch your address');
           return;
         }
 
-        let location = await Location.getCurrentPositionAsync({});
-        setLocation(location);
+        // Get current position with timeout
+        const location = await Promise.race([
+          Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High }),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Location request timed out')), 10000)
+          )
+        ]);
 
-        // Reverse geocode to get address
-        let addressResponse = await Location.reverseGeocodeAsync({
+        // Reverse geocode with better error handling
+        const addressResponse = await Location.reverseGeocodeAsync({
           latitude: location.coords.latitude,
           longitude: location.coords.longitude,
         });
 
         if (addressResponse.length > 0) {
-          const { street, city, region, country } = addressResponse[0];
-          const formattedAddress = `${street || ''}, ${city || ''}, ${region || ''}, ${country || ''}`;
+          const addr = addressResponse[0];
+          const formattedAddress = [
+            addr.street, 
+            addr.city, 
+            addr.region, 
+            addr.postalCode, 
+            addr.country
+          ].filter(Boolean).join(', ');
+          
           setAddress(formattedAddress);
+        } else {
+          setLocationError('Could not determine address from location');
         }
       } catch (error) {
-        console.log('Location Error:', error.message);
-        Toast.show({
-          type: 'error',
-          text1: 'Error',
-          text2: 'Failed to fetch location. Please enter your address manually.'
-        });
+        console.log('Location Error:', error);
+        setLocationError(error.message || 'Failed to fetch location');
+      } finally {
+        setLocationLoading(false);
       }
-    })();
+    };
+
+    fetchLocation();
   }, []);
 
-  // Basic input sanitization
-  const sanitizeInput = (input) => {
-    return input.replace(/[<>{}]/g, ''); // Remove potentially dangerous characters
-  };
-
-  // Password strength validation
+  // Input validation functions
   const validatePassword = (password) => {
     const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$/;
     return passwordRegex.test(password);
   };
 
-  // Email validation
   const validateEmail = (email) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
   };
 
-  const handleRegister = async ({ email, password, role, name, phone, address: formAddress, aadhaar, license }) => {
+  const handleRegister = async (formData) => {
     setLoading(true);
     try {
-      // Input validation
-      if (!validateEmail(email)) {
-        throw new Error('Please enter a valid email address.');
-      }
-
-      if (!validatePassword(password)) {
-        throw new Error(
-          'Password must be at least 8 characters long and include at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&).'
-        );
-      }
-
-      if (!name || name.trim().length < 2) {
-        throw new Error('Name must be at least 2 characters long.');
-      }
-
-      if (!phone || !/^\d{10}$/.test(phone)) {
-        throw new Error('Phone number must be a valid 10-digit number.');
-      }
-
+      // Destructure and validate form data
+      const { email, password, role, name, phone, address: formAddress, aadhaar, license } = formData;
+      
+      if (!validateEmail(email)) throw new Error('Please enter a valid email address');
+      if (!validatePassword(password)) throw new Error(
+        'Password must be 8+ chars with uppercase, lowercase, number, and special character'
+      );
+      if (!name || name.trim().length < 2) throw new Error('Name must be at least 2 characters');
+      if (!phone || !/^\d{10}$/.test(phone)) throw new Error('Phone must be a 10-digit number');
+      
       if (role === 'user' || role === 'mechanic') {
-        if (!aadhaar || !/^\d{12}$/.test(aadhaar)) {
-          throw new Error('Aadhaar number must be a valid 12-digit number.');
-        }
+        if (!aadhaar || !/^\d{12}$/.test(aadhaar)) throw new Error('Aadhaar must be 12 digits');
       }
-
+      
       if (role === 'hospital' && (!license || license.trim().length < 5)) {
-        throw new Error('License number must be at least 5 characters long.');
+        throw new Error('License must be at least 5 characters');
       }
 
-      // Sanitize inputs
-      const sanitizedEmail = sanitizeInput(email);
-      const sanitizedName = sanitizeInput(name);
-      const sanitizedPhone = sanitizeInput(phone);
-      const sanitizedAddress = sanitizeInput(formAddress || address);
-      const sanitizedAadhaar = aadhaar ? sanitizeInput(aadhaar) : '';
-      const sanitizedLicense = license ? sanitizeInput(license) : '';
-
-      const userCredential = await createUserWithEmailAndPassword(auth, sanitizedEmail, password);
+      // Create user
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // Extract city from address (assuming last part is city)
-      const city = sanitizedAddress.split(',').pop().trim();
-
-      await setDoc(doc(db, "users", user.uid), {
-        email: sanitizedEmail,
+      // Prepare user data
+      const userData = {
+        email,
         role,
-        name: sanitizedName,
-        phone: sanitizedPhone,
-        address: sanitizedAddress,
-        city, // Add city field
-        ...(role === 'user' || role === 'mechanic' ? { aadhaar: sanitizedAadhaar } : {}),
-        ...(role === 'hospital' ? { license: sanitizedLicense, availableBeds: 0, availableAmbulances: 0 } : {})
-      });
+        name: name.trim(),
+        phone,
+        address: formAddress || address,
+        city: (formAddress || address).split(',').slice(-2, -1)[0]?.trim() || 'Unknown',
+        createdAt: new Date().toISOString(),
+        ...(role === 'user' || role === 'mechanic' ? { aadhaar } : {}),
+        ...(role === 'hospital' ? { 
+          license,
+          availableBeds: 0,
+          availableAmbulances: 0,
+          verified: false 
+        } : {})
+      };
+
+      // Save to Firestore
+      await setDoc(doc(db, "users", user.uid), userData);
 
       Toast.show({
         type: 'success',
-        text1: 'Success',
-        text2: 'Registered successfully!'
+        text1: 'Account Created',
+        text2: 'Registration successful!',
+        position: 'bottom'
       });
 
-      switch (role) {
-        case 'user':
-          navigation.replace('UserDashboard');
-          break;
-        case 'hospital':
-          navigation.replace('HospitalDashboard');
-          break;
-        case 'mechanic':
-          navigation.replace('MechanicDashboard');
-          break;
-        default:
-          throw new Error("Invalid role");
-      }
+      // Navigate to appropriate dashboard
+      navigation.replace(`${role.charAt(0).toUpperCase() + role.slice(1)}Dashboard`);
+      
     } catch (error) {
-      console.log('Register Error:', error.code || error.name, error.message);
+      console.log('Register Error:', error);
       Toast.show({
         type: 'error',
-        text1: 'Error',
-        text2: error.message
+        text1: 'Registration Failed',
+        text2: error.message,
+        position: 'bottom'
       });
     } finally {
       setLoading(false);
@@ -161,32 +151,58 @@ const RegisterScreen = ({ navigation }) => {
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
     >
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
-        {/* Header with Back Arrow */}
+      <ScrollView 
+        contentContainerStyle={styles.scrollContainer}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* Header with Back Button */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back-outline" size={24} color="#FFFFFF" />
+          <TouchableOpacity 
+            onPress={() => navigation.goBack()}
+            style={styles.backButton}
+          >
+            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
           </TouchableOpacity>
-          <Text style={styles.title}>Create.</Text>
+          <View style={styles.titleContainer}>
+            <Ionicons name="medkit" size={32} color="#E63946" style={styles.logo} />
+            <Text style={styles.title}>Create Account</Text>
+          </View>
+          {locationLoading && (
+            <View style={styles.locationStatus}>
+              <ActivityIndicator size="small" color="#457B9D" />
+              <Text style={styles.locationStatusText}>Fetching location...</Text>
+            </View>
+          )}
+          {locationError && (
+            <View style={styles.locationStatus}>
+              <Ionicons name="warning-outline" size={16} color="#E63946" />
+              <Text style={[styles.locationStatusText, { color: '#E63946' }]}>
+                {locationError}
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Form Section */}
-        <View style={styles.formContainer}>
+        <View style={styles.card}>
           <AuthForm
             onSubmit={handleRegister}
             isRegister={true}
             loading={loading}
-            initialAddress={address} // Pass the fetched address to AuthForm
+            initialAddress={address}
+            locationError={locationError}
           />
         </View>
 
         {/* Sign In Link */}
-        <TouchableOpacity style={styles.signInLinkContainer} onPress={() => navigation.navigate('Login')}>
-          <Text style={styles.signInLinkText}>
-            Already have an account? <Text style={styles.signInLinkBold}>Sign in</Text>
-          </Text>
-        </TouchableOpacity>
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>Already have an account?</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+            <Text style={styles.footerLink}>Sign In</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -195,39 +211,68 @@ const RegisterScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1C2526', // Dark background as in the image
+    backgroundColor: '#F8F9FA',
   },
   scrollContainer: {
     flexGrow: 1,
-    padding: 20,
-    justifyContent: 'center',
+    paddingHorizontal: 24,
+    paddingTop: 40,
+    paddingBottom: 20,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 30,
+    marginBottom: 32,
   },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#FFFFFF', // White text
-    marginLeft: 10,
-  },
-  formContainer: {
+  backButton: {
     marginBottom: 20,
   },
-  signInLinkContainer: {
+  titleContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 20,
+    marginBottom: 16,
   },
-  signInLinkText: {
+  logo: {
+    marginRight: 12,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#1D3557',
+  },
+  locationStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  locationStatusText: {
+    fontSize: 14,
+    color: '#457B9D',
+    marginLeft: 6,
+  },
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 3,
+    marginBottom: 24,
+  },
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  footerText: {
     fontSize: 16,
-    color: '#FFFFFF', // White text
+    color: '#457B9D',
+    marginRight: 4,
   },
-  signInLinkBold: {
-    fontWeight: 'bold',
-    color: '#FFFFFF', // White text with bold
-    textDecorationLine: 'underline',
+  footerLink: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#E63946',
   },
 });
 

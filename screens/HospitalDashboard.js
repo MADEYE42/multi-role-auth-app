@@ -5,34 +5,32 @@ import { collection, query, where, onSnapshot, doc, updateDoc, getDoc } from 'fi
 import { signOut } from 'firebase/auth';
 import Toast from 'react-native-toast-message';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const HospitalDashboard = ({ navigation }) => {
   const [pendingEmergencies, setPendingEmergencies] = useState([]);
   const [acceptedEmergencies, setAcceptedEmergencies] = useState([]);
-  const [hospitalData, setHospitalData] = useState(null); // Store hospital data (beds, ambulances)
+  const [hospitalData, setHospitalData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [accepting, setAccepting] = useState(null);
 
   useEffect(() => {
     if (!auth.currentUser) {
-      console.log('No authenticated user');
       navigation.replace('Login');
       return;
     }
 
-    // Fetch hospital data (beds, ambulances)
     const fetchHospitalData = async () => {
       try {
         const hospitalDocRef = doc(db, 'users', auth.currentUser.uid);
         const hospitalDoc = await getDoc(hospitalDocRef);
         if (hospitalDoc.exists()) {
           setHospitalData(hospitalDoc.data());
-          console.log('Hospital Data:', hospitalDoc.data()); // Debug log
         } else {
           Toast.show({
             type: 'error',
             text1: 'Error',
-            text2: 'Hospital data not found.'
+            text2: 'Hospital data not found.',
           });
         }
       } catch (error) {
@@ -40,14 +38,13 @@ const HospitalDashboard = ({ navigation }) => {
         Toast.show({
           type: 'error',
           text1: 'Error',
-          text2: 'Failed to fetch hospital data.'
+          text2: 'Failed to fetch hospital data.',
         });
       }
     };
 
     fetchHospitalData();
 
-    // Fetch pending emergencies
     const pendingQuery = query(
       collection(db, 'MedicalEmergency'),
       where('status', '==', 'pending'),
@@ -59,7 +56,6 @@ const HospitalDashboard = ({ navigation }) => {
         id: docSnapshot.id,
         ...docSnapshot.data(),
       }));
-      console.log('Pending Emergencies:', emergencies); // Debug log
       setPendingEmergencies(emergencies);
       setLoading(false);
     }, (error) => {
@@ -67,12 +63,11 @@ const HospitalDashboard = ({ navigation }) => {
       Toast.show({
         type: 'error',
         text1: 'Error',
-        text2: error.message
+        text2: error.message,
       });
       setLoading(false);
     });
 
-    // Fetch accepted emergencies for this hospital
     const acceptedQuery = query(
       collection(db, 'MedicalEmergency'),
       where('hospitalId', '==', auth.currentUser.uid),
@@ -84,30 +79,27 @@ const HospitalDashboard = ({ navigation }) => {
         id: docSnapshot.id,
         ...docSnapshot.data(),
       }));
-      console.log('Accepted Emergencies:', emergencies); // Debug log
       setAcceptedEmergencies(emergencies);
     }, (error) => {
       console.log('Snapshot Error:', error.code, error.message);
       Toast.show({
         type: 'error',
         text1: 'Error',
-        text2: error.message
+        text2: error.message,
       });
     });
 
-    // Listen for changes to hospital data in real-time
     const hospitalDocRef = doc(db, 'users', auth.currentUser.uid);
     const unsubscribeHospital = onSnapshot(hospitalDocRef, (docSnapshot) => {
       if (docSnapshot.exists()) {
         setHospitalData(docSnapshot.data());
-        console.log('Updated Hospital Data:', docSnapshot.data()); // Debug log
       }
     }, (error) => {
       console.log('Hospital Snapshot Error:', error.code, error.message);
       Toast.show({
         type: 'error',
         text1: 'Error',
-        text2: 'Failed to update hospital data.'
+        text2: 'Failed to update hospital data.',
       });
     });
 
@@ -118,7 +110,6 @@ const HospitalDashboard = ({ navigation }) => {
     };
   }, []);
 
-  // Update the number of beds or ambulances in Firestore
   const updateHospitalResources = async (newBeds, newAmbulances) => {
     try {
       const hospitalDocRef = doc(db, 'users', auth.currentUser.uid);
@@ -127,89 +118,98 @@ const HospitalDashboard = ({ navigation }) => {
         availableAmbulances: newAmbulances,
         updatedAt: new Date().toISOString(),
       });
-      console.log('Updated Resources - Beds:', newBeds, 'Ambulances:', newAmbulances); // Debug log
       Toast.show({
         type: 'success',
         text1: 'Success',
-        text2: 'Resources updated successfully!'
+        text2: 'Resources updated successfully!',
       });
     } catch (error) {
       console.log('Resource Update Error:', error.code, error.message);
       Toast.show({
         type: 'error',
         text1: 'Error',
-        text2: 'Failed to update resources.'
+        text2: 'Failed to update resources.',
       });
     }
   };
 
-  // Add beds
   const handleAddBeds = () => {
-    const newBeds = (hospitalData.availableBeds || 0) + 1;
-    updateHospitalResources(newBeds, hospitalData.availableAmbulances || 0);
+    const newBeds = (hospitalData?.availableBeds || 0) + 1;
+    updateHospitalResources(newBeds, hospitalData?.availableAmbulances || 0);
   };
 
-  // Subtract beds
   const handleSubtractBeds = () => {
-    const currentBeds = hospitalData.availableBeds || 0;
+    const currentBeds = hospitalData?.availableBeds || 0;
     if (currentBeds <= 0) {
       Toast.show({
         type: 'error',
         text1: 'Error',
-        text2: 'No beds available to subtract.'
+        text2: 'No beds available to subtract.',
       });
       return;
     }
     const newBeds = currentBeds - 1;
-    updateHospitalResources(newBeds, hospitalData.availableAmbulances || 0);
+    updateHospitalResources(newBeds, hospitalData?.availableAmbulances || 0);
   };
 
-  // Add ambulances
   const handleAddAmbulances = () => {
-    const newAmbulances = (hospitalData.availableAmbulances || 0) + 1;
-    updateHospitalResources(hospitalData.availableBeds || 0, newAmbulances);
+    const newAmbulances = (hospitalData?.availableAmbulances || 0) + 1;
+    updateHospitalResources(hospitalData?.availableBeds || 0, newAmbulances);
   };
 
-  // Subtract ambulances
   const handleSubtractAmbulances = () => {
-    const currentAmbulances = hospitalData.availableAmbulances || 0;
+    const currentAmbulances = hospitalData?.availableAmbulances || 0;
     if (currentAmbulances <= 0) {
       Toast.show({
         type: 'error',
         text1: 'Error',
-        text2: 'No ambulances available to subtract.'
+        text2: 'No ambulances available to subtract.',
       });
       return;
     }
     const newAmbulances = currentAmbulances - 1;
-    updateHospitalResources(hospitalData.availableBeds || 0, newAmbulances);
+    updateHospitalResources(hospitalData?.availableBeds || 0, newAmbulances);
   };
 
   const handleAcceptEmergency = async (emergencyId) => {
     setAccepting(emergencyId);
     try {
-      // Check if there are enough beds and ambulances
-      const currentBeds = hospitalData.availableBeds || 0;
-      const currentAmbulances = hospitalData.availableAmbulances || 0;
+      const currentBeds = hospitalData?.availableBeds || 0;
+      const currentAmbulances = hospitalData?.availableAmbulances || 0;
 
-      if (currentBeds <= 0 || currentAmbulances <= 0) {
+      // Explicitly check if either resource is zero
+      if (currentBeds === 0 && currentAmbulances === 0) {
         Toast.show({
           type: 'error',
           text1: 'Error',
-          text2: 'Not enough resources (beds or ambulances) to accept this emergency.'
+          text2: 'No beds or ambulances available to accept this emergency.',
+        });
+        setAccepting(null);
+        return;
+      } else if (currentBeds === 0) {
+        Toast.show({
+          type: 'error',
+          text1: 'Error',
+          text2: 'No beds available to accept this emergency.',
+        });
+        setAccepting(null);
+        return;
+      } else if (currentAmbulances === 0) {
+        Toast.show({
+          type: 'error',
+          text1: 'Error',
+          text2: 'No ambulances available to accept this emergency.',
         });
         setAccepting(null);
         return;
       }
 
-      // Update the emergency status
       const emergencyRef = doc(db, 'MedicalEmergency', emergencyId);
       await updateDoc(emergencyRef, {
         hospitalId: auth.currentUser.uid,
-        status: 'accepted'
+        status: 'accepted',
       });
 
-      // Decrease beds and ambulances by 1
       const newBeds = currentBeds - 1;
       const newAmbulances = currentAmbulances - 1;
       await updateHospitalResources(newBeds, newAmbulances);
@@ -217,14 +217,14 @@ const HospitalDashboard = ({ navigation }) => {
       Toast.show({
         type: 'success',
         text1: 'Success',
-        text2: 'Emergency accepted successfully!'
+        text2: 'Emergency accepted successfully!',
       });
     } catch (error) {
       console.log('Accept Error:', error.code, error.message);
       Toast.show({
         type: 'error',
         text1: 'Error',
-        text2: error.message
+        text2: error.message,
       });
     } finally {
       setAccepting(null);
@@ -237,7 +237,7 @@ const HospitalDashboard = ({ navigation }) => {
       Toast.show({
         type: 'success',
         text1: 'Success',
-        text2: 'Logged out successfully!'
+        text2: 'Logged out successfully!',
       });
       navigation.replace('Login');
     } catch (error) {
@@ -245,7 +245,7 @@ const HospitalDashboard = ({ navigation }) => {
       Toast.show({
         type: 'error',
         text1: 'Error',
-        text2: error.message
+        text2: error.message,
       });
     }
   };
@@ -256,320 +256,359 @@ const HospitalDashboard = ({ navigation }) => {
       Toast.show({
         type: 'error',
         text1: 'Error',
-        text2: 'Failed to open certificate.'
+        text2: 'Failed to open certificate.',
       });
     });
   };
 
   return (
-    <ScrollView style={styles.container}>
-      {/* Header Section */}
-      <View style={styles.header}>
-        <Text style={styles.title}>Hospital Dashboard</Text>
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Ionicons name="log-out-outline" size={24} color="#FF3B30" />
-        </TouchableOpacity>
-      </View>
-      <Text style={styles.subtitle}>Manage Medical Emergencies</Text>
+    <LinearGradient
+      colors={['#FFFFFF', '#E6F0FA']} // White to light blue gradient
+      style={styles.gradientContainer}
+    >
+      <ScrollView style={styles.container} contentContainerStyle={styles.scrollContainer}>
+        {/* Header Section */}
+        <View style={styles.header}>
+          <View style={styles.headerTextContainer}>
+            <Text style={styles.title}>Hospital Dashboard</Text>
+            <Text style={styles.subtitle}>Manage Emergencies</Text>
+          </View>
+          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+            <Ionicons name="log-out" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
 
-      {/* Hospital Resources Section */}
-      {hospitalData ? (
-        <View style={styles.resourcesContainer}>
-          <Text style={styles.sectionTitle}>Hospital Resources</Text>
-          <View style={styles.resourceRow}>
-            <Ionicons name="bed-outline" size={20} color="#666" style={styles.icon} />
-            <Text style={styles.resourceText}>Available Beds: {hospitalData.availableBeds || 0}</Text>
-            <View style={styles.resourceButtons}>
-              <TouchableOpacity style={styles.resourceButton} onPress={handleAddBeds}>
-                <Ionicons name="add-outline" size={20} color="#FFFFFF" />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.resourceButton} onPress={handleSubtractBeds}>
-                <Ionicons name="remove-outline" size={20} color="#FFFFFF" />
-              </TouchableOpacity>
+        {/* Hospital Resources Section */}
+        {hospitalData ? (
+          <View style={styles.resourcesContainer}>
+            <Text style={styles.sectionTitle}>Hospital Resources</Text>
+            <View style={styles.resourceRow}>
+              <Ionicons name="bed" size={22} color="#E63946" style={styles.icon} />
+              <Text style={styles.resourceText}>Beds: {hospitalData.availableBeds || 0}</Text>
+              <View style={styles.resourceButtons}>
+                <TouchableOpacity style={styles.resourceButtonAdd} onPress={handleAddBeds}>
+                  <Ionicons name="add" size={20} color="#FFFFFF" />
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.resourceButtonSubtract} onPress={handleSubtractBeds}>
+                  <Ionicons name="remove" size={20} color="#FFFFFF" />
+                </TouchableOpacity>
+              </View>
+            </View>
+            <View style={styles.resourceRow}>
+              <Ionicons name="car" size={22} color="#E63946" style={styles.icon} />
+              <Text style={styles.resourceText}>Ambulances: {hospitalData.availableAmbulances || 0}</Text>
+              <View style={styles.resourceButtons}>
+                <TouchableOpacity style={styles.resourceButtonAdd} onPress={handleAddAmbulances}>
+                  <Ionicons name="add" size={20} color="#FFFFFF" />
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.resourceButtonSubtract} onPress={handleSubtractAmbulances}>
+                  <Ionicons name="remove" size={20} color="#FFFFFF" />
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
-          <View style={styles.resourceRow}>
-            <Ionicons name="car-outline" size={20} color="#666" style={styles.icon} />
-            <Text style={styles.resourceText}>Available Ambulances: {hospitalData.availableAmbulances || 0}</Text>
-            <View style={styles.resourceButtons}>
-              <TouchableOpacity style={styles.resourceButton} onPress={handleAddAmbulances}>
-                <Ionicons name="add-outline" size={20} color="#FFFFFF" />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.resourceButton} onPress={handleSubtractAmbulances}>
-                <Ionicons name="remove-outline" size={20} color="#FFFFFF" />
-              </TouchableOpacity>
-            </View>
+        ) : (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#E63946" />
+            <Text style={styles.loadingText}>Loading resources...</Text>
           </View>
-        </View>
-      ) : (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#FF4444" />
-          <Text style={styles.loadingText}>Loading hospital resources...</Text>
-        </View>
-      )}
+        )}
 
-      {/* Loading State for Emergencies */}
-      {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#FF4444" />
-          <Text style={styles.loadingText}>Loading emergencies...</Text>
-        </View>
-      ) : (
-        <>
-          {/* Pending Emergencies Section */}
-          <View style={styles.sectionContainer}>
-            <Text style={styles.sectionTitle}>Pending Emergencies</Text>
-            {pendingEmergencies.length === 0 ? (
-              <Text style={styles.noDataText}>No pending emergencies available.</Text>
-            ) : (
-              pendingEmergencies.map((emergency) => (
-                <View key={emergency.id} style={styles.emergencyCard}>
-                  <View style={styles.emergencyRow}>
-                    <Ionicons name="medkit-outline" size={20} color="#666" style={styles.icon} />
-                    <Text style={styles.emergencyText}>Type: {emergency.type}</Text>
-                  </View>
-                  <View style={styles.emergencyRow}>
-                    <Ionicons name="location-outline" size={20} color="#666" style={styles.icon} />
-                    <Text style={styles.emergencyText} numberOfLines={2} ellipsizeMode="tail">
-                      Location: {emergency.location}
-                    </Text>
-                  </View>
-                  <View style={styles.emergencyRow}>
-                    <Ionicons name="person-outline" size={20} color="#666" style={styles.icon} />
-                    <Text style={styles.emergencyText}>User: {emergency.userName}</Text>
-                  </View>
-                  {emergency.medicalConditions ? (
+        {/* Loading State for Emergencies */}
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#E63946" />
+            <Text style={styles.loadingText}>Loading emergencies...</Text>
+          </View>
+        ) : (
+          <>
+            {/* Pending Emergencies Section */}
+            <View style={styles.sectionContainer}>
+              <Text style={styles.sectionTitle}>Pending Emergencies</Text>
+              {pendingEmergencies.length === 0 ? (
+                <Text style={styles.noDataText}>No pending emergencies.</Text>
+              ) : (
+                pendingEmergencies.map((emergency) => (
+                  <View key={emergency.id} style={styles.emergencyCard}>
                     <View style={styles.emergencyRow}>
-                      <Ionicons name="medkit-outline" size={20} color="#666" style={styles.icon} />
+                      <Ionicons name="medkit" size={20} color="#E63946" style={styles.icon} />
+                      <Text style={styles.emergencyText}>Type: {emergency.type}</Text>
+                    </View>
+                    <View style={styles.emergencyRow}>
+                      <Ionicons name="location" size={20} color="#E63946" style={styles.icon} />
                       <Text style={styles.emergencyText} numberOfLines={2} ellipsizeMode="tail">
-                        Medical Conditions: {emergency.medicalConditions}
+                        Location: {emergency.location}
                       </Text>
                     </View>
-                  ) : (
                     <View style={styles.emergencyRow}>
-                      <Ionicons name="medkit-outline" size={20} color="#666" style={styles.icon} />
-                      <Text style={styles.emergencyText}>Medical Conditions: Not provided</Text>
+                      <Ionicons name="person" size={20} color="#E63946" style={styles.icon} />
+                      <Text style={styles.emergencyText}>User: {emergency.userName}</Text>
                     </View>
-                  )}
-                  {emergency.medicalCertificate ? (
-                    <TouchableOpacity onPress={() => openCertificate(emergency.medicalCertificate)}>
-                      <View style={styles.emergencyRow}>
-                        <Ionicons name="document-outline" size={20} color="#666" style={styles.icon} />
-                        <Text style={[styles.emergencyText, styles.linkText]}>View Medical Certificate</Text>
-                      </View>
-                    </TouchableOpacity>
-                  ) : (
                     <View style={styles.emergencyRow}>
-                      <Ionicons name="document-outline" size={20} color="#666" style={styles.icon} />
-                      <Text style={styles.emergencyText}>Medical Certificate: Not provided</Text>
+                      <Ionicons name="medkit" size={20} color="#E63946" style={styles.icon} />
+                      <Text style={styles.emergencyText} numberOfLines={2} ellipsizeMode="tail">
+                        Conditions: {emergency.medicalConditions || 'Not provided'}
+                      </Text>
                     </View>
-                  )}
-                  <TouchableOpacity
-                    style={[styles.actionButton, accepting === emergency.id && styles.disabledButton]}
-                    onPress={() => handleAcceptEmergency(emergency.id)}
-                    disabled={accepting === emergency.id}
-                  >
-                    {accepting === emergency.id ? (
-                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    {emergency.medicalCertificate ? (
+                      <TouchableOpacity onPress={() => openCertificate(emergency.medicalCertificate)}>
+                        <View style={styles.emergencyRow}>
+                          <Ionicons name="document" size={20} color="#E63946" style={styles.icon} />
+                          <Text style={[styles.emergencyText, styles.linkText]}>View Certificate</Text>
+                        </View>
+                      </TouchableOpacity>
                     ) : (
-                      <Text style={styles.actionButtonText}>Accept Emergency</Text>
+                      <View style={styles.emergencyRow}>
+                        <Ionicons name="document" size={20} color="#E63946" style={styles.icon} />
+                        <Text style={styles.emergencyText}>Certificate: Not provided</Text>
+                      </View>
                     )}
-                  </TouchableOpacity>
-                </View>
-              ))
-            )}
-          </View>
+                    <TouchableOpacity
+                      style={[
+                        styles.actionButton,
+                        (accepting === emergency.id || hospitalData?.availableBeds === 0 || hospitalData?.availableAmbulances === 0) && styles.disabledButton,
+                      ]}
+                      onPress={() => handleAcceptEmergency(emergency.id)}
+                      disabled={accepting === emergency.id || hospitalData?.availableBeds === 0 || hospitalData?.availableAmbulances === 0}
+                    >
+                      {accepting === emergency.id ? (
+                        <ActivityIndicator size="small" color="#FFFFFF" />
+                      ) : (
+                        <Text style={styles.actionButtonText}>ACCEPT EMERGENCY</Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                ))
+              )}
+            </View>
 
-          {/* Accepted Emergencies Section */}
-          <View style={styles.sectionContainer}>
-            <Text style={styles.sectionTitle}>Accepted Emergencies</Text>
-            {acceptedEmergencies.length === 0 ? (
-              <Text style={styles.noDataText}>No accepted emergencies.</Text>
-            ) : (
-              acceptedEmergencies.map((emergency) => (
-                <View key={emergency.id} style={styles.emergencyCard}>
-                  <View style={styles.emergencyRow}>
-                    <Ionicons name="medkit-outline" size={20} color="#666" style={styles.icon} />
-                    <Text style={styles.emergencyText}>Type: {emergency.type}</Text>
-                  </View>
-                  <View style={styles.emergencyRow}>
-                    <Ionicons name="location-outline" size={20} color="#666" style={styles.icon} />
-                    <Text style={styles.emergencyText} numberOfLines={2} ellipsizeMode="tail">
-                      Location: {emergency.location}
-                    </Text>
-                  </View>
-                  <View style={styles.emergencyRow}>
-                    <Ionicons name="person-outline" size={20} color="#666" style={styles.icon} />
-                    <Text style={styles.emergencyText}>User: {emergency.userName || 'Unknown'}</Text>
-                  </View>
-                  <View style={styles.emergencyRow}>
-                    <Ionicons name="call-outline" size={20} color="#666" style={styles.icon} />
-                    <Text style={styles.emergencyText}>Contact: {emergency.userPhone || 'Not available'}</Text>
-                  </View>
-                  {emergency.medicalConditions ? (
+            {/* Accepted Emergencies Section */}
+            <View style={styles.sectionContainer}>
+              <Text style={styles.sectionTitle}>Accepted Emergencies</Text>
+              {acceptedEmergencies.length === 0 ? (
+                <Text style={styles.noDataText}>No accepted emergencies.</Text>
+              ) : (
+                acceptedEmergencies.map((emergency) => (
+                  <View key={emergency.id} style={[styles.emergencyCard, { borderLeftColor: '#2A9D8F' }]}>
                     <View style={styles.emergencyRow}>
-                      <Ionicons name="medkit-outline" size={20} color="#666" style={styles.icon} />
+                      <Ionicons name="medkit" size={20} color="#2A9D8F" style={styles.icon} />
+                      <Text style={styles.emergencyText}>Type: {emergency.type}</Text>
+                    </View>
+                    <View style={styles.emergencyRow}>
+                      <Ionicons name="location" size={20} color="#2A9D8F" style={styles.icon} />
                       <Text style={styles.emergencyText} numberOfLines={2} ellipsizeMode="tail">
-                        Medical Conditions: {emergency.medicalConditions}
+                        Location: {emergency.location}
                       </Text>
                     </View>
-                  ) : (
                     <View style={styles.emergencyRow}>
-                      <Ionicons name="medkit-outline" size={20} color="#666" style={styles.icon} />
-                      <Text style={styles.emergencyText}>Medical Conditions: Not provided</Text>
+                      <Ionicons name="person" size={20} color="#2A9D8F" style={styles.icon} />
+                      <Text style={styles.emergencyText}>User: {emergency.userName || 'Unknown'}</Text>
                     </View>
-                  )}
-                  {emergency.medicalCertificate ? (
-                    <TouchableOpacity onPress={() => openCertificate(emergency.medicalCertificate)}>
+                    <View style={styles.emergencyRow}>
+                      <Ionicons name="call" size={20} color="#2A9D8F" style={styles.icon} />
+                      <Text style={styles.emergencyText}>Contact: {emergency.userPhone || 'N/A'}</Text>
+                    </View>
+                    <View style={styles.emergencyRow}>
+                      <Ionicons name="medkit" size={20} color="#2A9D8F" style={styles.icon} />
+                      <Text style={styles.emergencyText} numberOfLines={2} ellipsizeMode="tail">
+                        Conditions: {emergency.medicalConditions || 'Not provided'}
+                      </Text>
+                    </View>
+                    {emergency.medicalCertificate ? (
+                      <TouchableOpacity onPress={() => openCertificate(emergency.medicalCertificate)}>
+                        <View style={styles.emergencyRow}>
+                          <Ionicons name="document" size={20} color="#2A9D8F" style={styles.icon} />
+                          <Text style={[styles.emergencyText, styles.linkText]}>View Certificate</Text>
+                        </View>
+                      </TouchableOpacity>
+                    ) : (
                       <View style={styles.emergencyRow}>
-                        <Ionicons name="document-outline" size={20} color="#666" style={styles.icon} />
-                        <Text style={[styles.emergencyText, styles.linkText]}>View Medical Certificate</Text>
+                        <Ionicons name="document" size={20} color="#2A9D8F" style={styles.icon} />
+                        <Text style={styles.emergencyText}>Certificate: Not provided</Text>
                       </View>
-                    </TouchableOpacity>
-                  ) : (
-                    <View style={styles.emergencyRow}>
-                      <Ionicons name="document-outline" size={20} color="#666" style={styles.icon} />
-                      <Text style={styles.emergencyText}>Medical Certificate: Not provided</Text>
-                    </View>
-                  )}
-                </View>
-              ))
-            )}
-          </View>
-        </>
-      )}
-    </ScrollView>
+                    )}
+                  </View>
+                ))
+              )}
+            </View>
+          </>
+        )}
+      </ScrollView>
+    </LinearGradient>
   );
 };
 
 const styles = StyleSheet.create({
+  gradientContainer: {
+    flex: 1,
+  },
   container: {
     flex: 1,
-    backgroundColor: '#F5E6CC', // Beige background
-    padding: 20,
+  },
+  scrollContainer: {
+    paddingHorizontal: 20,
+    paddingTop: 40,
+    paddingBottom: 30,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    marginBottom: 25,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  headerTextContainer: {
+    flex: 1,
   },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#000000', // Black text
+    fontSize: 26,
+    fontWeight: '700',
+    color: '#1D3557',
+    letterSpacing: 0.3,
   },
   subtitle: {
-    fontSize: 16,
-    color: '#FFBB33', // Medium yellow
-    marginBottom: 20,
+    fontSize: 14,
+    color: '#457B9D',
+    fontWeight: '500',
+    marginTop: 2,
   },
   logoutButton: {
-    padding: 10,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 10,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#E63946',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#E63946',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
   resourcesContainer: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 15,
+    borderRadius: 15,
+    padding: 20,
     marginBottom: 20,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.1,
     shadowRadius: 8,
-    elevation: 5,
+    elevation: 4,
   },
   resourceRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 15,
   },
   resourceText: {
     fontSize: 16,
-    color: '#000000',
+    color: '#1D3557',
     flex: 1,
+    fontWeight: '500',
   },
   resourceButtons: {
     flexDirection: 'row',
   },
-  resourceButton: {
-    backgroundColor: '#FFBB33', // Yellow button
-    padding: 5,
-    borderRadius: 5,
-    marginLeft: 5,
+  resourceButtonAdd: {
+    backgroundColor: '#2A9D8F',
+    padding: 8,
+    borderRadius: 8,
+    marginLeft: 10,
+  },
+  resourceButtonSubtract: {
+    backgroundColor: '#E63946',
+    padding: 8,
+    borderRadius: 8,
+    marginLeft: 10,
   },
   loadingContainer: {
-    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 50,
+    marginTop: 80,
   },
   loadingText: {
     marginTop: 10,
     fontSize: 16,
-    color: '#666',
+    color: '#457B9D',
+    fontWeight: '500',
   },
   sectionContainer: {
     marginBottom: 30,
   },
   sectionTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: '#000000',
+    fontWeight: '700',
+    color: '#1D3557',
     marginBottom: 15,
   },
   emergencyCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 15,
+    borderRadius: 15,
+    padding: 18,
     marginBottom: 15,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.1,
     shadowRadius: 8,
-    elevation: 5,
+    elevation: 4,
+    borderLeftWidth: 4,
+    borderLeftColor: '#E63946', // Default red for pending
   },
   emergencyRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 12,
   },
   icon: {
-    marginRight: 10,
+    marginRight: 12,
   },
   emergencyText: {
     fontSize: 16,
-    color: '#000000',
+    color: '#1D3557',
+    fontWeight: '500',
   },
   linkText: {
-    color: '#00CC00', // Green for clickable link
+    color: '#457B9D',
     textDecorationLine: 'underline',
+    fontWeight: '600',
   },
   actionButton: {
-    backgroundColor: '#FF4444', // Red button
-    paddingVertical: 15,
-    borderRadius: 10,
+    backgroundColor: '#E63946',
+    paddingVertical: 16,
+    borderRadius: 12,
     alignItems: 'center',
+    shadowColor: '#E63946',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
     marginTop: 10,
   },
   disabledButton: {
-    backgroundColor: '#FF9999', // Lighter red when disabled
+    backgroundColor: '#E6A8A8',
+    shadowOpacity: 0,
   },
   actionButtonText: {
-    color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '600',
+    color: '#FFFFFF',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
   },
   noDataText: {
     fontSize: 16,
-    color: '#666',
+    color: '#457B9D',
     textAlign: 'center',
+    fontWeight: '500',
   },
 });
 
