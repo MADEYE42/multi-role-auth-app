@@ -177,7 +177,6 @@ const HospitalDashboard = ({ navigation }) => {
       const currentBeds = hospitalData?.availableBeds || 0;
       const currentAmbulances = hospitalData?.availableAmbulances || 0;
 
-      // Explicitly check if either resource is zero
       if (currentBeds === 0 && currentAmbulances === 0) {
         Toast.show({
           type: 'error',
@@ -263,7 +262,7 @@ const HospitalDashboard = ({ navigation }) => {
 
   return (
     <LinearGradient
-      colors={['#FFFFFF', '#E6F0FA']} // White to light blue gradient
+      colors={['#FFFFFF', '#E6F0FA']}
       style={styles.gradientContainer}
     >
       <ScrollView style={styles.container} contentContainerStyle={styles.scrollContainer}>
@@ -343,6 +342,10 @@ const HospitalDashboard = ({ navigation }) => {
                     <View style={styles.emergencyRow}>
                       <Ionicons name="person" size={20} color="#E63946" style={styles.icon} />
                       <Text style={styles.emergencyText}>User: {emergency.userName}</Text>
+                    </View>
+                    <View style={styles.emergencyRow}>
+                      <Ionicons name="call" size={20} color="#E63946" style={styles.icon} />
+                      <Text style={styles.emergencyText}>Contact: {emergency.userPhone || 'N/A'}</Text>
                     </View>
                     <View style={styles.emergencyRow}>
                       <Ionicons name="medkit" size={20} color="#E63946" style={styles.icon} />
