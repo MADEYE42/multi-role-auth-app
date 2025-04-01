@@ -1,4 +1,4 @@
-# 🚨 Multi-Role Emergency Response App 📱
+# 🚨 Crisis Call📱
 
 Welcome to the **Multi-Role Emergency Response App**! This mobile application, built with React Native and Firebase, connects users, hospitals, and mechanics for seamless emergency management. 🌟
 
