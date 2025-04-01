@@ -13,10 +13,10 @@ import { auth, db } from '../firebase/firebaseConfig';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import Toast from 'react-native-toast-message';
 import { Ionicons } from '@expo/vector-icons';
-import { Picker } from '@react-native-picker/picker'; // Updated Picker import
+import { Picker } from '@react-native-picker/picker';
 
 const MedicalEmergencyFormScreen = ({ navigation, route }) => {
-  const { emergencyId } = route.params; // Passed from the accepted emergency
+  const { emergencyId } = route.params;
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -45,7 +45,7 @@ const MedicalEmergencyFormScreen = ({ navigation, route }) => {
     insurancePolicy: '',
     insuranceProvider: '',
     consent: 'Yes',
-    idProofUrl: '', // Placeholder for file upload
+    idProofUrl: '',
   });
 
   useEffect(() => {
@@ -72,7 +72,7 @@ const MedicalEmergencyFormScreen = ({ navigation, route }) => {
         }
         setLoading(false);
       } catch (error) {
-        console.log('Fetch Error:', error);
+        console.log('Fetch Error:', error.code, error.message);
         Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to load user data.' });
         setLoading(false);
       }
@@ -81,24 +81,51 @@ const MedicalEmergencyFormScreen = ({ navigation, route }) => {
   }, []);
 
   const handleSubmit = async () => {
+    if (!formData.age || !formData.gender || !formData.primaryIssue) {
+      Toast.show({
+        type: 'error',
+        text1: 'Validation Error',
+        text2: 'Please fill in Age, Gender, and Primary Issue.',
+      });
+      return;
+    }
+
+    if (!auth.currentUser) {
+      Toast.show({
+        type: 'error',
+        text1: 'Authentication Error',
+        text2: 'User not authenticated. Please log in again.',
+      });
+      navigation.navigate('Login');
+      return;
+    }
+
     setSubmitting(true);
     try {
-      const formDocRef = doc(db, 'MedicalEmergencyForms', `${emergencyId}_${auth.currentUser.uid}`);
-      await setDoc(formDocRef, {
+      const formId = `${emergencyId}_${auth.currentUser.uid}`;
+      const formDocRef = doc(db, 'MedicalEmergencyForms', formId);
+      const submissionData = {
         ...formData,
         emergencyId,
         userId: auth.currentUser.uid,
         submittedAt: new Date().toISOString(),
-      });
+      };
+      console.log('Authenticated User UID:', auth.currentUser.uid);
+      console.log('Submitting Form with ID:', formId, 'Data:', submissionData);
+      await setDoc(formDocRef, submissionData);
       Toast.show({
         type: 'success',
         text1: 'Success',
-        text2: 'Form submitted successfully!',
+        text2: 'Form submitted successfully! Emergency ID: ' + emergencyId,
       });
-      navigation.goBack(); // Return to MedicalEmergencyScreen
+      navigation.goBack();
     } catch (error) {
-      console.log('Submit Error:', error);
-      Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to submit form.' });
+      console.log('Submit Error:', error.code, error.message, 'Emergency ID:', emergencyId);
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: `Failed to submit form: ${error.message}`,
+      });
     } finally {
       setSubmitting(false);
     }

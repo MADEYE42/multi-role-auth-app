@@ -6,8 +6,8 @@ import { signOut } from 'firebase/auth';
 import Toast from 'react-native-toast-message';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { printToFileAsync } from 'expo-print'; // For generating PDF
-import * as Sharing from 'expo-sharing'; // For sharing the PDF
+import { printToFileAsync } from 'expo-print';
+import * as Sharing from 'expo-sharing';
 
 const HospitalDashboard = ({ navigation }) => {
   const [pendingEmergencies, setPendingEmergencies] = useState([]);
@@ -62,7 +62,7 @@ const HospitalDashboard = ({ navigation }) => {
       setPendingEmergencies(emergencies);
       setLoading(false);
     }, (error) => {
-      console.log('Snapshot Error:', error.code, error.message);
+      console.log('Pending Snapshot Error:', error.code, error.message);
       Toast.show({
         type: 'error',
         text1: 'Error',
@@ -88,14 +88,24 @@ const HospitalDashboard = ({ navigation }) => {
         const formDocRef = doc(db, 'MedicalEmergencyForms', `${emergency.id}_${emergency.userId}`);
         onSnapshot(formDocRef, (formDoc) => {
           if (formDoc.exists()) {
+            console.log('Form Data Fetched:', formDoc.data(), 'for Emergency:', emergency.id);
             setForms((prev) => ({ ...prev, [emergency.id]: formDoc.data() }));
+          } else {
+            console.log('No Form Exists for ID:', `${emergency.id}_${emergency.userId}`);
           }
         }, (error) => {
-          console.log('Form Fetch Error:', error.code, error.message);
+          console.log('Form Fetch Error:', error.code, error.message, 'Form ID:', `${emergency.id}_${emergency.userId}`);
+          // Optionally notify user of permission issue
+          Toast.show({
+            type: 'info',
+            text1: 'Info',
+            text2: 'Form data unavailable due to permissions.',
+            visibilityTime: 2000,
+          });
         });
       });
     }, (error) => {
-      console.log('Snapshot Error:', error.code, error.message);
+      console.log('Accepted Snapshot Error:', error.code, error.message);
       Toast.show({
         type: 'error',
         text1: 'Error',
@@ -310,12 +320,11 @@ const HospitalDashboard = ({ navigation }) => {
         html,
         fileName: `MedicalForm_${emergencyId}`,
       });
-      // Use expo-sharing to share the file instead of Linking.openURL
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(uri, {
           mimeType: 'application/pdf',
           dialogTitle: 'Open or Share Medical Form PDF',
-          UTI: 'com.adobe.pdf', // For iOS
+          UTI: 'com.adobe.pdf',
         });
         Toast.show({
           type: 'success',
@@ -507,7 +516,7 @@ const HospitalDashboard = ({ navigation }) => {
                       </View>
                     )}
                     {/* Display Medical Form if Submitted */}
-                    {forms[emergency.id] && (
+                    {forms[emergency.id] ? (
                       <View style={styles.formSection}>
                         <Text style={styles.sectionTitle}>Medical Emergency Form</Text>
                         <View style={styles.emergencyRow}>
@@ -548,6 +557,10 @@ const HospitalDashboard = ({ navigation }) => {
                         >
                           <Text style={styles.downloadButtonText}>Download Form as PDF</Text>
                         </TouchableOpacity>
+                      </View>
+                    ) : (
+                      <View style={styles.formSection}>
+                        <Text style={styles.noDataText}>Form not available yet.</Text>
                       </View>
                     )}
                   </View>
