@@ -9,16 +9,18 @@ import MechanicDashboard from '../screens/MechanicDashboard';
 import MedicalEmergencyScreen from '../screens/MedicalEmergencyScreen';
 import VehicleBreakdownScreen from '../screens/VehicleBreakdownScreen';
 import AddMedicalInfoScreen from '../screens/AddMedicalInfoScreen';
+import TermsAndConditionsScreen from '../screens/TermsAndConditionsScreen';
+import MedicalEmergencyFormScreen from '../screens/MedicalEmergencyFormScreen'; // Ensure this import matches your file structure
 
 const Stack = createStackNavigator();
 
 const AppNavigator = () => {
   return (
     <NavigationContainer>
-      <Stack.Navigator 
+      <Stack.Navigator
         initialRouteName="Login"
         screenOptions={{
-          headerShown: false
+          headerShown: false,
         }}
       >
         <Stack.Screen name="Login" component={LoginScreen} />
@@ -29,6 +31,8 @@ const AppNavigator = () => {
         <Stack.Screen name="MedicalEmergency" component={MedicalEmergencyScreen} />
         <Stack.Screen name="VehicleBreakdown" component={VehicleBreakdownScreen} />
         <Stack.Screen name="AddMedicalInfo" component={AddMedicalInfoScreen} />
+        <Stack.Screen name="TermsAndConditions" component={TermsAndConditionsScreen} />
+        <Stack.Screen name="MedicalEmergencyForm" component={MedicalEmergencyFormScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

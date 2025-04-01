@@ -133,7 +133,6 @@ const MedicalEmergencyScreen = ({ navigation }) => {
                 });
               })
               .finally(() => setLoadingHospital(false));
-            unsubscribeSnapshot();
           }
         }
       }, (error) => {
@@ -191,9 +190,15 @@ const MedicalEmergencyScreen = ({ navigation }) => {
     navigation.navigate('UserDashboard');
   };
 
+  const handleSubmitMedicalForm = () => {
+    if (emergencyId && status === 'accepted') {
+      navigation.navigate('MedicalEmergencyForm', { emergencyId });
+    }
+  };
+
   return (
     <LinearGradient
-      colors={['#FFFFFF', '#E6F0FA']} // White to light blue gradient
+      colors={['#FFFFFF', '#E6F0FA']}
       style={styles.gradientContainer}
     >
       <ScrollView style={styles.container} contentContainerStyle={styles.scrollContainer}>
@@ -328,6 +333,13 @@ const MedicalEmergencyScreen = ({ navigation }) => {
                   <Ionicons name="car" size={20} color="#2A9D8F" style={styles.hospitalIcon} />
                   <Text style={styles.hospitalText}>Ambulances: {acceptedHospital.availableAmbulances || 'N/A'}</Text>
                 </View>
+                {/* Submit Medical Form Button */}
+                <TouchableOpacity
+                  style={styles.formButton}
+                  onPress={handleSubmitMedicalForm}
+                >
+                  <Text style={styles.formButtonText}>SUBMIT MEDICAL FORM</Text>
+                </TouchableOpacity>
               </View>
             )}
           </>
@@ -554,6 +566,25 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#457B9D',
     fontWeight: '500',
+  },
+  formButton: {
+    backgroundColor: '#E63946',
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    shadowColor: '#E63946',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+    marginTop: 20,
+  },
+  formButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
   },
 });
 
