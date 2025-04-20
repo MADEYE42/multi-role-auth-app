@@ -1,12 +1,20 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
-import { auth, db } from '../firebase/firebaseConfig';
+import { auth, db, debugAuthState } from '../firebase/firebaseConfig';
 import { doc, updateDoc } from 'firebase/firestore';
 import Toast from 'react-native-toast-message';
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import axios from 'axios';
 import { LinearGradient } from 'expo-linear-gradient';
+
+// Log auth state immediately after import
+console.log('AddMedicalInfoScreen: Initial auth state:', {
+  apiKey: auth?.apiKey,
+  authDomain: auth?.authDomain,
+  appName: auth?.app?.name || 'undefined',
+  currentUser: auth?.currentUser?.uid || 'none',
+});
 
 const AddMedicalInfoScreen = ({ navigation }) => {
   const [certificate, setCertificate] = useState(null);
@@ -15,30 +23,43 @@ const AddMedicalInfoScreen = ({ navigation }) => {
   const [submitting, setSubmitting] = useState(false);
 
   const pickCertificate = async () => {
+    console.log('Picking certificate...');
     const result = await DocumentPicker.getDocumentAsync({
       type: ['image/*', 'application/pdf'],
       copyToCacheDirectory: true,
     });
 
-    if (result.type !== 'cancel') {
+    if (!result.canceled && result.assets?.length > 0) {
+      const asset = result.assets[0];
       setCertificate({
-        uri: result.uri,
-        name: result.name,
+        uri: asset.uri,
+        name: asset.name || asset.uri.split('/').pop() || 'unknown_file',
       });
-      console.log('Certificate Selected:', result);
+      console.log('Certificate selected:', asset);
     } else {
       console.log('Certificate selection cancelled');
     }
   };
 
   const uploadToCloudinary = async (file) => {
+    if (!file || !file.uri) {
+      console.error('Invalid file object:', file);
+      Toast.show({
+        type: 'error',
+        text1: 'Upload Error',
+        text2: 'Invalid file selected.',
+      });
+      return null;
+    }
+
     setUploading(true);
+    console.log('Uploading to Cloudinary:', file);
+
     const formData = new FormData();
+    const fileName = file.name || file.uri.split('/').pop() || 'unknown_file';
+    const fileExtension = fileName.includes('.') ? fileName.split('.').pop().toLowerCase() : 'unknown';
 
     let fileType = 'application/octet-stream';
-    const fileName = file.name || file.uri.split('/').pop();
-    const fileExtension = fileName.split('.').pop().toLowerCase();
-
     if (fileExtension === 'pdf') {
       fileType = 'application/pdf';
     } else if (['jpg', 'jpeg', 'png', 'gif'].includes(fileExtension)) {
@@ -59,10 +80,10 @@ const AddMedicalInfoScreen = ({ navigation }) => {
           'Content-Type': 'multipart/form-data',
         },
       });
-      console.log('Cloudinary Upload Success:', response.data);
+      console.log('Cloudinary upload success:', response.data.secure_url);
       return response.data.secure_url;
     } catch (error) {
-      console.log('Cloudinary Upload Error:', error.response?.data || error.message);
+      console.error('Cloudinary upload error:', error.response?.data || error.message);
       Toast.show({
         type: 'error',
         text1: 'Upload Error',
@@ -81,14 +102,46 @@ const AddMedicalInfoScreen = ({ navigation }) => {
         text1: 'Error',
         text2: 'Please enter your medical conditions.',
       });
+      console.log('Submit failed: Medical conditions empty');
       return;
     }
 
-    setSubmitting(true);
-    try {
-      const user = auth.currentUser;
-      if (!user) throw new Error('No authenticated user found.');
+    if (!auth.currentUser) {
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'No authenticated user found. Please log in again.',
+      });
+      console.error('Submit failed: No authenticated user');
+      navigation.navigate('Login');
+      return;
+    }
 
+    console.log('Checking auth state before submit:');
+    debugAuthState();
+
+    if (!auth.apiKey || !auth.authDomain) {
+      console.warn('Firebase auth configuration missing, proceeding with caution:', {
+        apiKey: auth.apiKey,
+        authDomain: auth.authDomain,
+        currentUser: auth.currentUser.uid,
+      });
+      Toast.show({
+        type: 'warning',
+        text1: 'Configuration Warning',
+        text2: 'Firebase authentication configuration is incomplete, but proceeding.',
+      });
+    }
+
+    setSubmitting(true);
+    console.log('Submitting medical info for user:', auth.currentUser.uid);
+    console.log('Update data:', {
+      medicalConditions: medicalConditions.trim(),
+      medicalCertificate: certificate ? 'pending upload' : null,
+      updatedAt: new Date().toISOString(),
+    });
+
+    try {
       let certificateUrl = null;
       if (certificate) {
         certificateUrl = await uploadToCloudinary(certificate);
@@ -101,13 +154,15 @@ const AddMedicalInfoScreen = ({ navigation }) => {
         }
       }
 
-      const userDocRef = doc(db, 'users', user.uid);
+      const userDocRef = doc(db, 'users', auth.currentUser.uid);
       const updateData = {
         medicalConditions: medicalConditions.trim(),
         medicalCertificate: certificateUrl || null,
         updatedAt: new Date().toISOString(),
       };
+      console.log('Updating Firestore with:', updateData);
       await updateDoc(userDocRef, updateData);
+      console.log('Firestore update successful');
 
       Toast.show({
         type: 'success',
@@ -116,7 +171,11 @@ const AddMedicalInfoScreen = ({ navigation }) => {
       });
       navigation.goBack();
     } catch (error) {
-      console.log('Firestore Error:', error.code || error.name, error.message);
+      console.error('Firestore error:', {
+        code: error.code || error.name,
+        message: error.message,
+        stack: error.stack,
+      });
       Toast.show({
         type: 'error',
         text1: 'Error',
@@ -128,16 +187,16 @@ const AddMedicalInfoScreen = ({ navigation }) => {
   };
 
   const handleBack = () => {
+    console.log('Navigating back');
     navigation.goBack();
   };
 
   return (
     <LinearGradient
-      colors={['#FFFFFF', '#E6F0FA']} // White to light blue gradient
+      colors={['#FFFFFF', '#E6F0FA']}
       style={styles.gradientContainer}
     >
       <ScrollView style={styles.container} contentContainerStyle={styles.scrollContainer}>
-        {/* Header Section */}
         <View style={styles.header}>
           <TouchableOpacity onPress={handleBack} style={styles.backButton}>
             <Ionicons name="arrow-back" size={28} color="#1D3557" />
@@ -148,7 +207,6 @@ const AddMedicalInfoScreen = ({ navigation }) => {
           </View>
         </View>
 
-        {/* Input Section */}
         <View style={styles.inputContainer}>
           <View style={styles.inputWrapper}>
             <Ionicons name="medkit" size={22} color="#E63946" style={styles.icon} />

@@ -1,98 +1,111 @@
-import React, { useState, useEffect, useRef } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  Image,
-  Animated,
-  CheckBox, // Note: React Native doesn't have a built-in CheckBox, see below
-} from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { doc, getDoc, updateDoc } from 'firebase/firestore'; // Added updateDoc
-import { auth, db } from '../firebase/firebaseConfig';
-import AuthForm from '../components/AuthForm';
+import { doc, getDoc } from 'firebase/firestore';
+import { auth, db, debugAuthState } from '../firebase/firebaseConfig';
 import Toast from 'react-native-toast-message';
+import { Ionicons } from '@expo/vector-icons';
+
+// Log auth state immediately after import
+console.log('LoginScreen: Initial auth state:', {
+  apiKey: auth?.apiKey,
+  authDomain: auth?.authDomain,
+  appName: auth?.app?.name || 'undefined',
+  currentUser: auth?.currentUser?.uid || 'none',
+});
 
 const LoginScreen = ({ navigation }) => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [termsAccepted, setTermsAccepted] = useState(false); // Checkbox state
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(50)).current;
 
-  useEffect(() => {
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 1000,
-      useNativeDriver: true,
-    }).start();
+  const validateEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
 
-    Animated.timing(slideAnim, {
-      toValue: 0,
-      duration: 800,
-      delay: 300,
-      useNativeDriver: true,
-    }).start();
-  }, [fadeAnim, slideAnim]);
-
-  const handleLogin = async ({ email, password }) => {
-    if (!termsAccepted) {
+  const handleLogin = async () => {
+    if (!validateEmail(email)) {
       Toast.show({
         type: 'error',
         text1: 'Error',
-        text2: 'Please accept the Terms and Conditions to proceed.',
+        text2: 'Please enter a valid email address.',
+      });
+      return;
+    }
+
+    if (!password || password.length < 6) {
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Password must be at least 6 characters.',
       });
       return;
     }
 
     setLoading(true);
+    console.log('Starting login for:', email);
+    console.log('Auth object before login:', {
+      apiKey: auth.apiKey,
+      authDomain: auth.authDomain,
+      appName: auth.app?.name || 'undefined',
+    });
+
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const userDocRef = doc(db, 'users', userCredential.user.uid);
+      const user = userCredential.user;
+      console.log('Firebase login successful, user UID:', user.uid);
+
+      console.log('Checking auth state after login:');
+      debugAuthState();
+
+      console.log('Fetching user data from Firestore for UID:', user.uid);
+      const userDocRef = doc(db, 'users', user.uid);
       const userDoc = await getDoc(userDocRef);
 
       if (!userDoc.exists()) {
-        throw new Error('User data not found in database');
+        throw new Error('User data not found in Firestore.');
       }
 
       const userData = userDoc.data();
-
-      // Update termsAccepted in Firestore only if not already true
-      if (!userData.termsAccepted) {
-        await updateDoc(userDocRef, {
-          termsAccepted: true,
-          termsAcceptedAt: new Date().toISOString(),
-        });
-      }
+      console.log('User data retrieved:', userData);
 
       Toast.show({
         type: 'success',
         text1: 'Success',
-        text2: 'Logged in successfully!',
+        text2: 'Login successful!',
       });
 
-      switch (userData.role) {
-        case 'user':
-          navigation.replace('UserDashboard');
+      const role = userData.role;
+      console.log('Navigating based on role:', role);
+      navigation.replace(`${role.charAt(0).toUpperCase() + role.slice(1)}Dashboard`);
+    } catch (error) {
+      console.error('Login error:', {
+        code: error.code,
+        message: error.message,
+        stack: error.stack,
+      });
+      let errorMessage = 'An error occurred during login';
+      switch (error.code) {
+        case 'auth/user-not-found':
+          errorMessage = 'No user found with this email.';
           break;
-        case 'hospital':
-          navigation.replace('HospitalDashboard');
+        case 'auth/wrong-password':
+          errorMessage = 'Incorrect password.';
           break;
-        case 'mechanic':
-          navigation.replace('MechanicDashboard');
+        case 'auth/invalid-email':
+          errorMessage = 'Invalid email address.';
+          break;
+        case 'auth/configuration-not-found':
+          errorMessage = 'Firebase Authentication configuration not found.';
           break;
         default:
-          throw new Error('Invalid role');
+          errorMessage = error.message;
       }
-    } catch (error) {
-      console.log('Login Error:', error.code || error.name, error.message);
       Toast.show({
         type: 'error',
-        text1: 'Error',
-        text2: error.message,
+        text1: 'Login Failed',
+        text2: errorMessage,
       });
     } finally {
       setLoading(false);
@@ -103,57 +116,62 @@ const LoginScreen = ({ navigation }) => {
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
     >
-      <ScrollView
-        contentContainerStyle={styles.scrollContainer}
-        keyboardShouldPersistTaps="handled"
-      >
-        <View style={styles.contentContainer}>
-          <Animated.View style={[styles.logoContainer, { opacity: fadeAnim }]}>
-            <Image
-              source={require('../assets/logo.png')}
-              style={styles.logo}
-              resizeMode="contain"
+      <ScrollView contentContainerStyle={styles.scrollContainer}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+          <View style={styles.titleContainer}>
+            <Ionicons name="medkit" size={32} color="#E63946" style={styles.logo} />
+            <Text style={styles.title}>Sign In</Text>
+          </View>
+        </View>
+
+        <View style={styles.card}>
+          <View style={styles.inputContainer}>
+            <Ionicons name="mail" size={22} color="#E63946" style={styles.icon} />
+            <TextInput
+              style={styles.input}
+              placeholder="Email"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              placeholderTextColor="#457B9D"
             />
-          </Animated.View>
+          </View>
+          <View style={styles.inputContainer}>
+            <Ionicons name="lock-closed" size={22} color="#E63946" style={styles.icon} />
+            <TextInput
+              style={styles.input}
+              placeholder="Password"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              placeholderTextColor="#457B9D"
+            />
+          </View>
 
-          <Animated.View style={[styles.card, { transform: [{ translateY: slideAnim }] }]}>
-            <Text style={styles.cardTitle}>Sign In</Text>
-            <Text style={styles.cardSubtitle}>Access your emergency network</Text>
+          <TouchableOpacity
+            style={[styles.button, loading && styles.disabledButton]}
+            onPress={handleLogin}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Text style={styles.buttonText}>SIGN IN</Text>
+            )}
+          </TouchableOpacity>
+        </View>
 
-            <View style={styles.formContainer}>
-              <AuthForm onSubmit={handleLogin} isRegister={false} loading={loading} />
-            </View>
-
-            {/* Terms and Conditions Checkbox and Link */}
-            <View style={styles.termsContainer}>
-              <TouchableOpacity
-                style={styles.checkboxContainer}
-                onPress={() => setTermsAccepted(!termsAccepted)}
-              >
-                <View style={[styles.checkbox, termsAccepted && styles.checkboxChecked]}>
-                  {termsAccepted && <Text style={styles.checkMark}>✓</Text>}
-                </View>
-                <Text style={styles.termsText}>I agree to the </Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => navigation.navigate('TermsAndConditions', { role: 'user' })}>
-                <Text style={styles.termsLink}>Terms and Conditions</Text>
-              </TouchableOpacity>
-            </View>
-          </Animated.View>
-
-          <Animated.View style={[styles.linksContainer, { transform: [{ translateY: slideAnim }] }]}>
-            <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')}>
-              <Text style={styles.linkText}>Forgot Password?</Text>
-            </TouchableOpacity>
-
-            <View style={styles.signupPrompt}>
-              <Text style={styles.signupText}>Don't have an account? </Text>
-              <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-                <Text style={[styles.linkText, styles.signupLink]}>Sign Up</Text>
-              </TouchableOpacity>
-            </View>
-          </Animated.View>
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>Don't have an account?</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+            <Text style={styles.footerLink}>Sign Up</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -167,103 +185,94 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     flexGrow: 1,
-    justifyContent: 'center',
+    paddingHorizontal: 24,
+    paddingTop: 40,
+    paddingBottom: 20,
   },
-  contentContainer: {
-    padding: 24,
-    maxWidth: 480,
-    width: '100%',
-    alignSelf: 'center',
+  header: {
+    marginBottom: 32,
   },
-  logoContainer: {
+  backButton: {
+    marginBottom: 20,
+  },
+  titleContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: 16,
   },
   logo: {
-    width: 150,
-    height: 150,
+    marginRight: 12,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#1D3557',
   },
   card: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 24,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
-    shadowRadius: 6,
+    shadowRadius: 12,
     elevation: 3,
-  },
-  cardTitle: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: '#1D3557',
-    marginBottom: 4,
-  },
-  cardSubtitle: {
-    fontSize: 14,
-    color: '#457B9D',
     marginBottom: 24,
   },
-  formContainer: {
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8F9FA',
+    borderRadius: 12,
+    paddingHorizontal: 15,
+    paddingVertical: 10,
     marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
   },
-  termsContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 16,
-    flexWrap: 'wrap',
-  },
-  checkboxContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  checkbox: {
-    width: 20,
-    height: 20,
-    borderWidth: 2,
-    borderColor: '#E63946',
-    borderRadius: 4,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 8,
-  },
-  checkboxChecked: {
-    backgroundColor: '#E63946',
-  },
-  checkMark: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  termsText: {
-    fontSize: 14,
+  input: {
+    flex: 1,
+    fontSize: 16,
     color: '#1D3557',
   },
-  termsLink: {
-    fontSize: 14,
-    color: '#E63946',
-    fontWeight: '600',
-    textDecorationLine: 'underline',
+  icon: {
+    marginRight: 12,
   },
-  linksContainer: {
-    marginTop: 24,
+  button: {
+    backgroundColor: '#E63946',
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    shadowColor: '#E63946',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  disabledButton: {
+    backgroundColor: '#A3BFFA',
+    shadowOpacity: 0,
+  },
+  buttonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    textTransform: 'uppercase',
+  },
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  linkText: {
-    color: '#E63946',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  signupPrompt: {
-    flexDirection: 'row',
-    marginTop: 16,
-  },
-  signupText: {
+  footerText: {
+    fontSize: 16,
     color: '#457B9D',
-    fontSize: 14,
+    marginRight: 4,
   },
-  signupLink: {
+  footerLink: {
+    fontSize: 16,
     fontWeight: '600',
+    color: '#E63946',
   },
 });
 

@@ -8,27 +8,33 @@ import Toast from 'react-native-toast-message';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 
+// Log auth state immediately after import
+console.log('RegisterScreen: Initial auth state:', {
+  apiKey: auth?.apiKey,
+  authDomain: auth?.authDomain,
+  appName: auth?.app?.name || 'undefined',
+});
+
 const RegisterScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [locationLoading, setLocationLoading] = useState(true);
   const [address, setAddress] = useState('');
   const [locationError, setLocationError] = useState(null);
 
-  // Enhanced location fetching with better error handling
   useEffect(() => {
     const fetchLocation = async () => {
+      console.log('Fetching location...');
       try {
         setLocationLoading(true);
         setLocationError(null);
-        
-        // Check permissions
+
         let { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== 'granted') {
           setLocationError('Location permission is required to fetch your address');
+          console.log('Location permission denied');
           return;
         }
 
-        // Get current position with timeout
         const location = await Promise.race([
           Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High }),
           new Promise((_, reject) => 
@@ -36,7 +42,7 @@ const RegisterScreen = ({ navigation }) => {
           )
         ]);
 
-        // Reverse geocode with better error handling
+        console.log('Location retrieved:', location.coords);
         const addressResponse = await Location.reverseGeocodeAsync({
           latitude: location.coords.latitude,
           longitude: location.coords.longitude,
@@ -53,11 +59,13 @@ const RegisterScreen = ({ navigation }) => {
           ].filter(Boolean).join(', ');
           
           setAddress(formattedAddress);
+          console.log('Address set:', formattedAddress);
         } else {
           setLocationError('Could not determine address from location');
+          console.log('No address found from geocoding');
         }
       } catch (error) {
-        console.log('Location Error:', error);
+        console.error('Location error:', error.message);
         setLocationError(error.message || 'Failed to fetch location');
       } finally {
         setLocationLoading(false);
@@ -67,7 +75,6 @@ const RegisterScreen = ({ navigation }) => {
     fetchLocation();
   }, []);
 
-  // Input validation functions
   const validatePassword = (password) => {
     const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$/;
     return passwordRegex.test(password);
@@ -78,12 +85,28 @@ const RegisterScreen = ({ navigation }) => {
     return emailRegex.test(email);
   };
 
-  const handleRegister = async (formData) => {
+  const handleRegister = async (formData, retryCount = 0) => {
+    if (!auth) {
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Firebase Authentication is not initialized.',
+      });
+      console.error('Registration failed: Auth object is undefined');
+      return;
+    }
+
     setLoading(true);
+    console.log('Starting registration with form data:', formData);
+    console.log('Auth object before registration:', {
+      apiKey: auth.apiKey,
+      authDomain: auth.authDomain,
+      appName: auth.app?.name || 'undefined',
+    });
+
     try {
-      // Destructure and validate form data
       const { email, password, role, name, phone, address: formAddress, aadhaar, license } = formData;
-      
+
       if (!validateEmail(email)) throw new Error('Please enter a valid email address');
       if (!validatePassword(password)) throw new Error(
         'Password must be 8+ chars with uppercase, lowercase, number, and special character'
@@ -99,11 +122,11 @@ const RegisterScreen = ({ navigation }) => {
         throw new Error('License must be at least 5 characters');
       }
 
-      // Create user
+      console.log('Creating Firebase user for:', email);
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
+      console.log('Firebase user created, UID:', user.uid);
 
-      // Prepare user data
       const userData = {
         email,
         role,
@@ -121,8 +144,9 @@ const RegisterScreen = ({ navigation }) => {
         } : {})
       };
 
-      // Save to Firestore
+      console.log('Saving user data to Firestore for UID:', user.uid, userData);
       await setDoc(doc(db, "users", user.uid), userData);
+      console.log('User data saved successfully');
 
       Toast.show({
         type: 'success',
@@ -131,15 +155,39 @@ const RegisterScreen = ({ navigation }) => {
         position: 'bottom'
       });
 
-      // Navigate to appropriate dashboard
+      console.log('Navigating to dashboard:', `${role.charAt(0).toUpperCase() + role.slice(1)}Dashboard`);
       navigation.replace(`${role.charAt(0).toUpperCase() + role.slice(1)}Dashboard`);
-      
     } catch (error) {
-      console.log('Register Error:', error);
+      console.error('Registration error:', {
+        code: error.code,
+        message: error.message,
+        stack: error.stack,
+      });
+      let errorMessage = 'An error occurred during registration';
+      switch (error.code) {
+        case 'auth/email-already-in-use':
+          errorMessage = 'This email is already registered';
+          break;
+        case 'auth/invalid-email':
+          errorMessage = 'Invalid email address';
+          break;
+        case 'auth/weak-password':
+          errorMessage = 'Password is too weak';
+          break;
+        case 'auth/configuration-not-found':
+          errorMessage = 'Firebase Authentication configuration not found. Please check Firebase project setup.';
+          if (retryCount < 1) {
+            console.log('Retrying registration, attempt:', retryCount + 1);
+            return handleRegister(formData, retryCount + 1);
+          }
+          break;
+        default:
+          errorMessage = error.message;
+      }
       Toast.show({
         type: 'error',
         text1: 'Registration Failed',
-        text2: error.message,
+        text2: errorMessage,
         position: 'bottom'
       });
     } finally {
@@ -157,7 +205,6 @@ const RegisterScreen = ({ navigation }) => {
         contentContainerStyle={styles.scrollContainer}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Header with Back Button */}
         <View style={styles.header}>
           <TouchableOpacity 
             onPress={() => navigation.goBack()}
@@ -185,7 +232,6 @@ const RegisterScreen = ({ navigation }) => {
           )}
         </View>
 
-        {/* Form Section */}
         <View style={styles.card}>
           <AuthForm
             onSubmit={handleRegister}
@@ -196,7 +242,6 @@ const RegisterScreen = ({ navigation }) => {
           />
         </View>
 
-        {/* Sign In Link */}
         <View style={styles.footer}>
           <Text style={styles.footerText}>Already have an account?</Text>
           <TouchableOpacity onPress={() => navigation.navigate('Login')}>
