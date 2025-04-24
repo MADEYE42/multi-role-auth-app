@@ -125,7 +125,6 @@ const LoginScreen = ({ navigation }) => {
           </TouchableOpacity>
           <View style={styles.logoContainer}>
             <Image source={require('../assets/logo.png')} style={styles.logo} />
-            <Text style={styles.title}>Sign In</Text>
           </View>
         </View>
 
@@ -203,8 +202,8 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   logo: {
-    width: 100,
-    height: 100,
+    width: 200,
+    height: 200,
     resizeMode: 'contain',
     marginBottom: 16,
   },
