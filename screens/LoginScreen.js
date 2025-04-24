@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, KeyboardAvoidingView, Platform, Image } from 'react-native';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db, debugAuthState } from '../firebase/firebaseConfig';
@@ -123,8 +123,8 @@ const LoginScreen = ({ navigation }) => {
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
             <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
           </TouchableOpacity>
-          <View style={styles.titleContainer}>
-            <Ionicons name="medkit" size={32} color="#E63946" style={styles.logo} />
+          <View style={styles.logoContainer}>
+            <Image source={require('../assets/logo.png')} style={styles.logo} />
             <Text style={styles.title}>Sign In</Text>
           </View>
         </View>
@@ -190,22 +190,27 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   header: {
+    alignItems: 'center',
     marginBottom: 32,
   },
   backButton: {
-    marginBottom: 20,
+    position: 'absolute',
+    top: 10,
+    left: 10,
   },
-  titleContainer: {
-    flexDirection: 'row',
+  logoContainer: {
     alignItems: 'center',
-    marginBottom: 16,
+    marginTop: 20,
   },
   logo: {
-    marginRight: 12,
+    width: 100,
+    height: 100,
+    resizeMode: 'contain',
+    marginBottom: 16,
   },
   title: {
     fontSize: 28,
-    fontWeight: '700',
+    fontWeight: 'bold',
     color: '#1D3557',
   },
   card: {
@@ -225,7 +230,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8F9FA',
     borderRadius: 12,
     paddingHorizontal: 15,
-    paddingVertical: 10,
+    paddingVertical: 12,
     marginBottom: 16,
     borderWidth: 1,
     borderColor: '#E0E0E0',
@@ -263,6 +268,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
+    marginTop: 16,
   },
   footerText: {
     fontSize: 16,

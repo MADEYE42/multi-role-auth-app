@@ -127,8 +127,8 @@ const AddMedicalInfoScreen = ({ navigation }) => {
         currentUser: auth.currentUser.uid,
       });
       Toast.show({
-        type: 'warning',
-        text1: 'Configuration Warning',
+        type: 'info', // Changed from 'warning' to 'info'
+        text1: 'Configuration Notice',
         text2: 'Firebase authentication configuration is incomplete, but proceeding.',
       });
     }
