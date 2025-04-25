@@ -43,14 +43,6 @@ Created **3 role-based dashboards** with **React Navigation**, **StyleSheet**, a
   - Authentication (sign-up, sign-in, sign-out)  
   - Firestore (real-time database)  
 
-### **Styling**  
-- 🎨 **StyleSheet**: React Native styling API  
-- 🌈 **Color Theme**:  
-  - Dark background: `#1C2526`  
-  - Light gray inputs: `#F5F5F5`  
-  - White text: `#FFFFFF`  
-  - Light gray buttons: `#E0E0E0`  
-
 ### **Tools**  
 - 🖥️ **Node.js**: JavaScript runtime  
 - 📦 **npm/Yarn**: Package manager  
